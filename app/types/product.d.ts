@@ -41,3 +41,14 @@ export interface IBusinessInfo {
   phone: string;
   taxId: string;
 }
+
+interface ITransfer {
+  productId: string;
+  productName: string;
+  productCode: string;
+  boxCode: string;
+  imageUrl: string;
+  fromLocation: string;
+  toLocation: string;
+  quantity: number;
+}
