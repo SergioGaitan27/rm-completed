@@ -1,10 +1,10 @@
 import React from 'react';
 import Image from 'next/image';
-import { Button } from "@/app/lib/components/ui/button";
-import { Input } from "@/app/lib/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/app/lib/components/ui/radio-group";
-import { Label } from "@/app/lib/components/ui/label";
-import { Card, CardContent } from "@/app/lib/components/ui/card";
+import { Button } from "@/app/acciones/components/ui/button";
+import { Input } from "@/app/acciones/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/app/acciones/components/ui/radio-group";
+import { Label } from "@/app/acciones/components/ui/label";
+import { Card, CardContent } from "@/app/acciones/components/ui/card";
 import { Plus, Minus } from 'lucide-react';
 
 interface Product {

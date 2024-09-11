@@ -1,3 +1,5 @@
+// app/api/products/route.ts
+
 import { NextResponse } from 'next/server';
 import { createProduct, getProducts, checkProductExists } from '@/app/lib/actions/product';
 

@@ -32,6 +32,7 @@ export interface CartItem extends Product {
   quantity: number;
   unitType: 'pieces' | 'boxes';
   appliedPrice: number;
+  adjustedPrice?: number;
 }
 
 export interface IBusinessInfo {

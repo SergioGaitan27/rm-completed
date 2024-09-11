@@ -1,19 +1,25 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense  } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/lib/components/ui/dialog";
-import { Button } from "@/app/lib/components/ui/button";
-import { Input } from "@/app/lib/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/app/lib/components/ui/radio-group";
-import { Label } from "@/app/lib/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/lib/components/ui/card";
-import ProductCard from '@/app/lib/components/ProductCard'; 
+import { Button } from "@/app/acciones/components/ui/button";
+import { Input } from "@/app/acciones/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/acciones/components/ui/card";
+import ProductCard from '@/app/acciones/components/ProductCard'; 
 import { toast } from 'react-hot-toast';
-import ProductInfo from '@/app/lib/components/ProductInfo';
+import ProductInfo from '@/app/acciones/components/ProductInfo';
 import ConectorPluginV3 from '@/app/utils/ConectorPluginV3';
 import { Product, CartItem, IBusinessInfo, IStockLocation } from '@/app/types/product';
+import PriceAdjustmentModal from '@/app/acciones/components/PriceAdjustmentModal';
+
+const PaymentModal = lazy(() => import('@/app/acciones/components/PaymentModal'));
+const CorteModal = lazy(() => import('@/app/acciones/components/CorteModal'));
+const CorteConfirmationModal = lazy(() => import('@/app/acciones/components/CorteConfirmationModal'));
+
+interface AdjustedCartItem extends CartItem {
+    adjustedPrice?: number;
+  }
 
 const groupCartItems = (cart: CartItem[]): Record<string, CartItem[]> => {
   return cart.reduce((acc, item) => {
@@ -51,6 +57,7 @@ const calculateProductTotals = (items: CartItem[]): {
 
   return { boxes, loosePieces, totalPieces };
 };
+
 
 const SalesPage: React.FC = () => {
   const { data: session, status } = useSession();
@@ -92,6 +99,8 @@ const SalesPage: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
+  const [isPriceAdjustmentModalOpen, setIsPriceAdjustmentModalOpen] = useState(false);
+  const [cartUpdateTrigger, setCartUpdateTrigger] = useState(0);
 
 
   const fetchBusinessInfo = useCallback(async () => {
@@ -158,39 +167,89 @@ const SalesPage: React.FC = () => {
     }
   }, [status, router, session, fetchUserLocation, fetchProducts]);
 
-  const handleSearchTop = () => {
-    if (searchTermTop.trim().toUpperCase() === 'ACTUALIZAR') {
-      fetchProducts();
-      setSearchTermTop('');
-      return;
-    }
-    if (searchTermTop.trim().toUpperCase() === 'CORTE') {
-      setIsCorteModalOpen(true);
-      setSearchTermTop('');
-      return;
-    }
-    const result = products.find(product => 
-      product.boxCode.toLowerCase() === searchTermTop.toLowerCase() ||
-      product.productCode.toLowerCase() === searchTermTop.toLowerCase() ||
-      product.name.toLowerCase().includes(searchTermTop.toLowerCase())
-    );
-  
-    if (result) {
-      setSelectedProduct(result);
-      setProductInfoBottom(result);
-  
-      if (result.boxCode.toLowerCase() === searchTermTop.toLowerCase()) {
-        setUnitType('boxes');
-      } else if (result.productCode.toLowerCase() === searchTermTop.toLowerCase()) {
-        setUnitType('pieces');
+  const applyPriceToCart = (priceType: 'regular' | 'mayoreo' | 'caja') => {
+    const updatedCart = cart.map(item => {
+      let newPrice;
+      switch (priceType) {
+        case 'mayoreo':
+          newPrice = item.price2; // Precio de mayoreo
+          break;
+        case 'caja':
+          newPrice = item.price3; // Precio de caja
+          break;
+        case 'regular':
+        default:
+          newPrice = item.price1; // Precio regular (menudeo)
+          break;
       }
-    } else {
-      setSelectedProduct(null);
-      setProductInfoBottom(null);
-      setProductSearchedFromBottom(false);
+      return {
+        ...item,
+        appliedPrice: newPrice
+      };
+    });
+    setCart(updatedCart);
+    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    toast.success(`Precio ${priceType === 'regular' ? 'regular' : priceType} aplicado a todos los productos`);
+  };
+
+  const handleSearchTop = () => {
+    const searchTerm = searchTermTop.trim().toUpperCase();
+    
+    switch (searchTerm) {
+      case 'ACTUALIZAR':
+        fetchProducts();
+        break;
+      case 'CORTE':
+        setIsCorteModalOpen(true);
+        break;
+      case 'P-MAYOREO':
+        applyPriceToCart('mayoreo');
+        break;
+      case 'P-CAJA':
+        applyPriceToCart('caja');
+        break;
+      case 'P-REGULAR':
+        applyPriceToCart('regular');
+        break;
+      case '231089-P':
+        setIsPriceAdjustmentModalOpen(true);
+        break;
+      default:
+        const result = products.find(product => 
+          product.boxCode.toLowerCase() === searchTerm.toLowerCase() ||
+          product.productCode.toLowerCase() === searchTerm.toLowerCase() ||
+          product.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      
+        if (result) {
+          setSelectedProduct(result);
+          setProductInfoBottom(result);
+      
+          if (result.boxCode.toLowerCase() === searchTerm.toLowerCase()) {
+            setUnitType('boxes');
+          } else if (result.productCode.toLowerCase() === searchTerm.toLowerCase()) {
+            setUnitType('pieces');
+          }
+        } else {
+          setSelectedProduct(null);
+          setProductInfoBottom(null);
+          setProductSearchedFromBottom(false);
+        }
     }
   
     setSearchTermTop('');
+  };
+
+  
+  const handleApplyPriceAdjustment = (adjustedCart: AdjustedCartItem[]) => {
+    const updatedCart: CartItem[] = adjustedCart.map(item => ({
+      ...item,
+      appliedPrice: item.adjustedPrice ?? item.appliedPrice // Usa el precio ajustado si existe, si no, mantén el precio aplicado original
+    }));
+    setCart(updatedCart);
+    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    setCartUpdateTrigger(prev => prev + 1); // Forzar re-renderización
+    toast.success('Precios ajustados correctamente');
   };
 
   const handleSearchBottom = (searchTerm: string) => {
@@ -234,13 +293,9 @@ const SalesPage: React.FC = () => {
     return product.price1;
   };
 
-  const getQuantityAsNumber = (quantity: number | string): number => {
-    return typeof quantity === 'string' ? parseFloat(quantity) : quantity;
-  };
-
   const getRemainingQuantity = (product: Product): number => {
     const locationStock = product.stockLocations.find(location => location.location === userLocation);
-    return locationStock ? getQuantityAsNumber(locationStock.quantity) : 0;
+    return locationStock ? Number(locationStock.quantity) : 0;
   };
 
   const handleAddToCart = () => {
@@ -374,14 +429,14 @@ const SalesPage: React.FC = () => {
 
   const calculateStockDisplay = (stockLocations: IStockLocation[], piecesPerBox: number) => {
     return stockLocations.map(location => {
-      const quantityNum = getQuantityAsNumber(location.quantity);
-      const boxes = Math.floor(quantityNum / piecesPerBox);
-      const loosePieces = quantityNum % piecesPerBox;
+      const quantity = Number(location.quantity);
+      const boxes = Math.floor(quantity / piecesPerBox);
+      const loosePieces = quantity % piecesPerBox;
       return {
         location: location.location,
         boxes,
         loosePieces,
-        total: quantityNum
+        total: quantity
       };
     });
   };
@@ -884,129 +939,54 @@ const SalesPage: React.FC = () => {
         )}
       </div>
 
-       {/* Modal de Pago */}
-       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Procesar Pago</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <RadioGroup value={paymentType} onValueChange={handlePaymentTypeChange}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="cash" id="cash" />
-                <Label htmlFor="cash">Efectivo</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="card" id="card" />
-                <Label htmlFor="card">Tarjeta</Label>
-              </div>
-            </RadioGroup>
-            <p className="font-bold text-lg">Total a pagar: ${calculateTotal().toFixed(2)}</p>
-            {paymentType === 'cash' && (
-              <div>
-                <Label htmlFor="amountPaid">Monto pagado:</Label>
-                <Input
-                  id="amountPaid"
-                  type="number"
-                  value={amountPaid}
-                  onChange={handleAmountPaidChange}
-                  placeholder="Ingrese el monto pagado"
-                  className="mt-4 mb-4"
-                  ref={amountPaidInputRef}
-                />
-                <p className={`mt-2 font-bold ${getChangeTextColor()}`}>
-                  {getChangeText()}
-                </p>
-              </div>
-            )}
-            
-          </div>
-          <DialogFooter>
-            <Button onClick={handleClosePaymentModal} variant="outline" disabled={isLoading}>Cancelar</Button>
-            <Button 
-              onClick={handlePayment}
-              disabled={paymentType === 'cash' && change < 0 || isLoading}
-            >
-              {isLoading ? 'Procesando...' : 'Confirmar Pago'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Modal de Corte */}
-      <Dialog open={isCorteModalOpen} onOpenChange={closeCorteModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Realizar Corte</DialogTitle>
-          </DialogHeader>
-          {!corteResults ? (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="cashAmountCorte">Monto en Efectivo:</Label>
-                <Input
-                  id="cashAmountCorte"
-                  type="number"
-                  value={cashAmountCorte}
-                  onChange={(e) => setCashAmountCorte(e.target.value)}
-                  placeholder="Ingrese el monto en efectivo"
-                  className="mt-2 mb-4"
-                />
-              </div>
-              <div>
-                <Label htmlFor="cardAmountCorte">Monto en Tarjeta:</Label>
-                <Input
-                  id="cardAmountCorte"
-                  type="number"
-                  value={cardAmountCorte}
-                  onChange={(e) => setCardAmountCorte(e.target.value)}
-                  placeholder="Ingrese el monto en tarjeta"
-                  className="mt-2 mb-4"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <h3 className="font-bold">Resultados del Corte:</h3>
-              <p>Efectivo Esperado: ${corteResults.expectedCash.toFixed(2)}</p>
-              <p>Efectivo Real: ${corteResults.actualCash.toFixed(2)}</p>
-              <p>Tarjeta Esperada: ${corteResults.expectedCard.toFixed(2)}</p>
-              <p>Tarjeta Real: ${corteResults.actualCard.toFixed(2)}</p>
-              <p>Total de Tickets: {corteResults.totalTickets}</p>
-            </div>
-          )}
-          <DialogFooter>
-            {!corteResults ? (
-              <>
-                <Button onClick={closeCorteModal} variant="outline">Cancelar</Button>
-                <Button 
-                  onClick={handleCorte} 
-                  disabled={isCorteLoading}
-                >
-                  {isCorteLoading ? 'Procesando...' : 'Realizar Corte'}
-                </Button>
-              </>
-            ) : (
-              <Button onClick={closeCorteModal}>Cerrar</Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Modal de Confirmación de Corte */}
-      <Dialog open={showCorteConfirmation} onOpenChange={setShowCorteConfirmation}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar Corte</DialogTitle>
-          </DialogHeader>
-          <p>¿Está seguro de que desea realizar el corte con los siguientes montos?</p>
-          <p>Efectivo: ${parseFloat(cashAmountCorte).toFixed(2)}</p>
-          <p>Tarjeta: ${parseFloat(cardAmountCorte).toFixed(2)}</p>
-          <DialogFooter>
-            <Button onClick={() => setShowCorteConfirmation(false)} variant="outline">Cancelar</Button>
-            <Button onClick={confirmCorte} disabled={isCorteLoading}>
-              {isCorteLoading ? 'Procesando...' : 'Confirmar Corte'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+       {/* Modales con Suspense */}
+      <Suspense fallback={<div>Cargando...</div>}>
+        <PaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={handleClosePaymentModal}
+          paymentType={paymentType}
+          amountPaid={amountPaid}
+          change={change}
+          totalAmount={calculateTotal()}
+          isLoading={isLoading}
+          onPaymentTypeChange={handlePaymentTypeChange}
+          onAmountPaidChange={handleAmountPaidChange}
+          onConfirmPayment={handlePayment}
+        />
+      </Suspense>
+
+      <Suspense fallback={<div>Cargando...</div>}>
+        <CorteModal
+          isOpen={isCorteModalOpen}
+          onClose={closeCorteModal}
+          cashAmountCorte={cashAmountCorte}
+          cardAmountCorte={cardAmountCorte}
+          isCorteLoading={isCorteLoading}
+          corteResults={corteResults}
+          onCashAmountChange={(e) => setCashAmountCorte(e.target.value)}
+          onCardAmountChange={(e) => setCardAmountCorte(e.target.value)}
+          onCorte={handleCorte}
+        />
+      </Suspense>
+
+      <Suspense fallback={<div>Cargando...</div>}>
+        <CorteConfirmationModal
+          isOpen={showCorteConfirmation}
+          onClose={() => setShowCorteConfirmation(false)}
+          cashAmount={cashAmountCorte}
+          cardAmount={cardAmountCorte}
+          isCorteLoading={isCorteLoading}
+          onConfirm={confirmCorte}
+        />
+      </Suspense>
+      <Suspense fallback={<div>Cargando...</div>}>
+        <PriceAdjustmentModal
+          isOpen={isPriceAdjustmentModalOpen}
+          onClose={() => setIsPriceAdjustmentModalOpen(false)}
+          cart={cart}
+          onApplyAdjustment={handleApplyPriceAdjustment}
+        />
+      </Suspense>
       </div>
   );
 };

@@ -1,3 +1,4 @@
+// app/api/products/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { getProductById, updateProduct } from '@/app/lib/actions/product';
 
