@@ -47,6 +47,8 @@ export interface ITransfer {
   productName: string;
   productCode: string;
   boxCode: string;
+  piecesPerBox: number;
+  piecesPerBox: number;
   imageUrl: string;
   fromLocation: string;
   toLocation: string;

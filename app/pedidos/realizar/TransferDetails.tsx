@@ -23,6 +23,20 @@ interface TransferDetailsProps {
   userLocation: string;
 }
 
+const calculateStockDisplay = (stockLocations: IStockLocation[], piecesPerBox: number) => {
+  return stockLocations.map(location => {
+    const totalPieces = Number(location.quantity);
+    const boxes = Math.floor(totalPieces / piecesPerBox);
+    const loosePieces = totalPieces % piecesPerBox;
+    return {
+      location: location.location,
+      boxes,
+      loosePieces,
+      total: totalPieces
+    };
+  });
+};
+
 const TransferDetails: React.FC<TransferDetailsProps> = ({
   selectedProduct,
   transfer,
@@ -31,14 +45,23 @@ const TransferDetails: React.FC<TransferDetailsProps> = ({
   userLocation
 }) => {
   const handleQuantityChange = (valueString: string) => {
-    onTransferChange('quantity', valueString === '' ? '' : Number(valueString));
+    onTransferChange('quantity', valueString);
   };
 
-  const maxQuantity = selectedProduct.stockLocations.find(
+  const maxQuantity = Number(selectedProduct.stockLocations.find(
     loc => loc.location === transfer.fromLocation
-  )?.quantity || 0;
+  )?.quantity || 0);
 
   const safeMaxQuantity: number = Number(maxQuantity);
+
+  const stockDisplay = calculateStockDisplay(selectedProduct.stockLocations, selectedProduct.piecesPerBox);
+
+  const formatQuantityDisplay = (quantity: number) => {
+    if (isNaN(quantity) || quantity === 0) return '';
+    const boxes = Math.floor(quantity / selectedProduct.piecesPerBox);
+    const loosePieces = quantity % selectedProduct.piecesPerBox;
+    return `${boxes} ${boxes === 1 ? 'caja' : 'cajas'}${loosePieces > 0 ? ` y ${loosePieces} ${loosePieces === 1 ? 'pieza' : 'piezas'}` : ''}`;
+  };
 
   return (
     <Box bg="white" p={6} borderRadius="md" boxShadow="md" w="full">
@@ -60,14 +83,20 @@ const TransferDetails: React.FC<TransferDetailsProps> = ({
             <Text>{selectedProduct.boxCode} | {selectedProduct.name}</Text>
             <Text fontWeight="bold">Código de Producto:</Text>
             <Text>{selectedProduct.productCode}</Text>
+            <Text fontWeight="bold">Piezas por caja:</Text>
+            <Text>{selectedProduct.piecesPerBox}</Text>
           </VStack>
         </HStack>
 
         <Box>
           <Text fontWeight="bold" mb={2}>Stock Actual:</Text>
-          {selectedProduct.stockLocations.map((loc: IStockLocation, index: number) => (
+          {stockDisplay.map((location, index) => (
             <Text key={index}>
-              {loc.location}: {loc.quantity}
+              {location.location}: 
+              {location.boxes > 0 && ` ${location.boxes} ${location.boxes === 1 ? 'caja' : 'cajas'}`}
+              {location.boxes > 0 && location.loosePieces > 0 && ' y'}
+              {location.loosePieces > 0 && ` ${location.loosePieces} ${location.loosePieces === 1 ? 'pieza' : 'piezas'}`}
+              {' | Total: '}{location.total} {location.total === 1 ? 'pieza' : 'piezas'}
             </Text>
           ))}
         </Box>
@@ -79,9 +108,13 @@ const TransferDetails: React.FC<TransferDetailsProps> = ({
             onChange={(e) => onTransferChange('fromLocation', e.target.value)}
           >
             <option value="">Seleccione ubicación origen</option>
-            {selectedProduct.stockLocations.map((loc: IStockLocation, index: number) => (
+            {stockDisplay.map((loc, index) => (
               <option key={index} value={loc.location}>
-                {loc.location} | Cantidad: {loc.quantity}
+                {loc.location} | 
+                {loc.boxes > 0 && ` ${loc.boxes} ${loc.boxes === 1 ? 'caja' : 'cajas'}`}
+                {loc.boxes > 0 && loc.loosePieces > 0 && ' y'}
+                {loc.loosePieces > 0 && ` ${loc.loosePieces} ${loc.loosePieces === 1 ? 'pieza' : 'piezas'}`}
+                {' | Total: '}{loc.total} {loc.total === 1 ? 'pieza' : 'piezas'}
               </option>
             ))}
           </Select>
@@ -93,33 +126,40 @@ const TransferDetails: React.FC<TransferDetailsProps> = ({
         </FormControl>
 
         <FormControl>
-        <FormLabel fontWeight="bold">Cantidad solicitada:</FormLabel>
-        <NumberInput
-          value={transfer.quantity === 0 ? '' : transfer.quantity}
-          onChange={handleQuantityChange}
-          min={0}
-          max={safeMaxQuantity}
-          keepWithinRange={true}
-          clampValueOnBlur={false}
-        >
-          <NumberInputField />
-        </NumberInput>
-        <Text fontSize="sm" color="gray.600" mt={1}>
-          Cantidad máxima disponible: {maxQuantity}
-        </Text>
-      </FormControl>
+          <FormLabel fontWeight="bold">Cantidad solicitada:</FormLabel>
+          <NumberInput
+            value={transfer.quantity}
+            onChange={handleQuantityChange}
+            min={0}
+            max={safeMaxQuantity}
+            keepWithinRange={true}
+            clampValueOnBlur={false}
+          >
+            <NumberInputField />
+          </NumberInput>
+          {transfer.quantity !== '' && Number(transfer.quantity) > 0 && (
+            <Text fontSize="sm" color="gray.600" mt={1}>
+              Conversión a cajas y piezas: {formatQuantityDisplay(Number(transfer.quantity))}
+            </Text>
+          )}
+          <Text fontSize="sm" color="gray.600" mt={1}>
+            Cantidad máxima disponible: {maxQuantity} piezas 
+            ({formatQuantityDisplay(maxQuantity)})
+          </Text>
+        </FormControl>
 
-      <Button
-        colorScheme="blue"
-        onClick={onAddToTransferList}
-        isDisabled={
-          !transfer.fromLocation || 
-          transfer.quantity === '' ||
-          (typeof transfer.quantity === 'number' && (transfer.quantity <= 0 || transfer.quantity > safeMaxQuantity))
-        }
-      >
-        Agregar a la lista
-      </Button>
+        <Button
+          colorScheme="blue"
+          onClick={onAddToTransferList}
+          isDisabled={
+            !transfer.fromLocation || 
+            transfer.quantity === '' ||
+            Number(transfer.quantity) === 0 ||
+            Number(transfer.quantity) > safeMaxQuantity
+          }
+        >
+          Agregar a la lista
+        </Button>
       </VStack>
     </Box>
   );

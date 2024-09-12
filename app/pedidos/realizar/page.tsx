@@ -16,7 +16,7 @@ import {
 import ProductSearch from './ProductSearch';
 import TransferDetails from './TransferDetails';
 import TransferList from './TransferList';
-import { Product, ITransfer } from '@/app/types/product';
+import { Product, ITransfer, IStockLocation } from '@/app/types/product';
 
 const TransferenciaProductosPage: React.FC = () => {
   const { data: session, status } = useSession();
@@ -29,6 +29,7 @@ const TransferenciaProductosPage: React.FC = () => {
     productId: '',
     productName: '',
     productCode: '',
+    piecesPerBox: 0,
     imageUrl: '',
     boxCode: '',
     fromLocation: '',
@@ -130,12 +131,17 @@ const TransferenciaProductosPage: React.FC = () => {
   
     if (selectedProduct && transfer.fromLocation && transfer.toLocation && 
       (typeof transfer.quantity === 'number' && transfer.quantity > 0)) {
-      setTransferList(prev => [...prev, {...transfer, quantity: Number(transfer.quantity)}]);
+        setTransferList(prev => [...prev, {
+          ...transfer,
+          quantity: Number(transfer.quantity),
+          piecesPerBox: selectedProduct.piecesPerBox  // Add this line
+        }]);
     setSelectedProduct(null);
     setTransfer({
       productId: '',
       productName: '',
       productCode: '',
+      piecesPerBox: 0,
       imageUrl: '',
       boxCode: '',
       fromLocation: '',
@@ -182,7 +188,7 @@ const TransferenciaProductosPage: React.FC = () => {
 
       setTimeout(() => {
         setTransferList([]);
-        router.push('/transferencias');
+        router.push('/pedidos');
       }, 2000);
     } catch (error) {
       toast({

@@ -18,8 +18,16 @@ interface TransferListProps {
   onRemoveTransfer: (index: number) => void;
 }
 
+const formatQuantityDisplay = (quantity: number | string, piecesPerBox: number) => {
+  const numQuantity = Number(quantity);
+  if (isNaN(numQuantity) || numQuantity === 0) return '';
+  const boxes = Math.floor(numQuantity / piecesPerBox);
+  const loosePieces = numQuantity % piecesPerBox;
+  return `${boxes} ${boxes === 1 ? 'caja' : 'cajas'}${loosePieces > 0 ? ` y ${loosePieces} ${loosePieces === 1 ? 'pieza' : 'piezas'}` : ''}`;
+};
+
 const TransferList: React.FC<TransferListProps> = ({ transferList, onRemoveTransfer }) => {
-  const totalProducts = transferList.reduce((total, item) => total + item.quantity, 0);
+  const totalProducts = transferList.reduce((total, item) => total + Number(item.quantity), 0);
 
   return (
     <Box bg="white" p={6} borderRadius="md" boxShadow="md" w="full">
@@ -47,7 +55,7 @@ const TransferList: React.FC<TransferListProps> = ({ transferList, onRemoveTrans
                   <Text><strong>Código de Caja:</strong> {item.boxCode}</Text>
                   <Text><strong>Desde:</strong> {item.fromLocation}</Text>
                   <Text><strong>Hacia:</strong> {item.toLocation}</Text>
-                  <Text><strong>Cantidad:</strong> {item.quantity}</Text>
+                  <Text><strong>Cantidad:</strong> {item.quantity} piezas ({formatQuantityDisplay(item.quantity, item.piecesPerBox)})</Text>
                   <Button
                     colorScheme="red"
                     size="sm"
