@@ -197,7 +197,7 @@ const HistorialTransferenciasPage: React.FC = () => {
                         <Text><strong>Total de productos:</strong> {transfer.transfers.length}</Text>
                         <Text><strong>Total de unidades:</strong> {transfer.transfers.reduce((acc, t) => acc + t.quantity, 0)}</Text>
                         <Text><strong>Origen → Destino:</strong> {uniqueOrigenDestino.join(', ')}</Text>
-                        <Link href={`/transferencias/historial/${transfer._id}`} passHref>
+                        <Link href={`/pedidos/historial/${transfer._id}`} passHref>
                           <Button as="a" colorScheme="blue" mt={2}>
                             Ver detalles
                           </Button>

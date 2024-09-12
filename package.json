@@ -26,6 +26,8 @@
     "mongoose": "^8.6.1",
     "next": "14.2.9",
     "next-auth": "^4.24.7",
+    "node-fetch": "^3.3.2",
+    "pdfmake": "^0.2.12",
     "react": "^18",
     "react-day-picker": "^9.0.9",
     "react-dom": "^18",
@@ -37,6 +39,7 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
+    "@types/pdfmake": "^0.2.9",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",

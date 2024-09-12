@@ -16,7 +16,6 @@ import {
 import ProductSearch from './ProductSearch';
 import TransferDetails from './TransferDetails';
 import TransferList from './TransferList';
-import EvidenceImage from './EvidenceImage';
 import { Product, ITransfer } from '@/app/types/product';
 
 const TransferenciaProductosPage: React.FC = () => {
@@ -34,11 +33,11 @@ const TransferenciaProductosPage: React.FC = () => {
     boxCode: '',
     fromLocation: '',
     toLocation: '',
-    quantity: 0
+    quantity: 0,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [transferList, setTransferList] = useState<ITransfer[]>([]);
-  const [transferImage, setTransferImage] = useState<File | null>(null);
+  const [userLocation, setUserLocation] = useState<string>('');
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -47,6 +46,13 @@ const TransferenciaProductosPage: React.FC = () => {
       setProducts(data);
     };
     fetchProducts();
+
+    const fetchUserLocation = async () => {
+      const response = await fetch('/api/user/location');
+      const data = await response.json();
+      setUserLocation(data.location);
+    };
+    fetchUserLocation();
   }, []);
 
   if (status === 'loading') {
@@ -71,32 +77,35 @@ const TransferenciaProductosPage: React.FC = () => {
       productCode: product.productCode,
       boxCode: product.boxCode,
       imageUrl: product.imageUrl || '',
-      quantity: 0
+      quantity: 0,
+      toLocation: userLocation
     }));
   };
 
   const handleTransferChange = (field: keyof ITransfer, value: string | number) => {
     setTransfer(prev => {
       const newTransfer = { ...prev };
-
+      
       if (field === 'quantity') {
-        // Convertir el valor a número si es una cadena
-        newTransfer.quantity = typeof value === 'string' ? parseInt(value, 10) || 0 : value;
+        if (value === '') {
+          newTransfer.quantity = '';
+        } else {
+          const numValue = Number(value);
+          newTransfer.quantity = isNaN(numValue) ? 0 : numValue;
+        }
       } else {
         (newTransfer as any)[field] = value;
       }
-
+      
       if (field === 'quantity' || field === 'fromLocation') {
         const fromLocation = selectedProduct?.stockLocations.find(loc => loc.location === newTransfer.fromLocation);
-        const availableQuantity = typeof fromLocation?.quantity === 'string' 
-          ? parseInt(fromLocation.quantity, 10) 
-          : (fromLocation?.quantity || 0);
-
-        if (newTransfer.quantity > availableQuantity) {
+        const availableQuantity = Number(fromLocation?.quantity || 0);
+        
+        if (typeof newTransfer.quantity === 'number' && newTransfer.quantity > availableQuantity) {
           newTransfer.quantity = availableQuantity;
         }
       }
-
+      
       return newTransfer;
     });
   };
@@ -107,7 +116,7 @@ const TransferenciaProductosPage: React.FC = () => {
       item.fromLocation === transfer.fromLocation && 
       item.toLocation === transfer.toLocation
     );
-
+  
     if (isDuplicate) {
       toast({
         title: "Error",
@@ -118,22 +127,23 @@ const TransferenciaProductosPage: React.FC = () => {
       });
       return;
     }
-
-    if (selectedProduct && transfer.fromLocation && transfer.toLocation && transfer.quantity > 0) {
-      setTransferList(prev => [...prev, transfer]);
-      setSelectedProduct(null);
-      setTransfer({
-        productId: '',
-        productName: '',
-        productCode: '',
-        imageUrl: '',
-        boxCode: '',
-        fromLocation: '',
-        toLocation: '',
-        quantity: 0
-      });
-    }
-  };
+  
+    if (selectedProduct && transfer.fromLocation && transfer.toLocation && 
+      (typeof transfer.quantity === 'number' && transfer.quantity > 0)) {
+      setTransferList(prev => [...prev, {...transfer, quantity: Number(transfer.quantity)}]);
+    setSelectedProduct(null);
+    setTransfer({
+      productId: '',
+      productName: '',
+      productCode: '',
+      imageUrl: '',
+      boxCode: '',
+      fromLocation: '',
+      toLocation: userLocation,
+      quantity: '',
+    });
+  }
+};
 
   const handleRemoveFromTransferList = (index: number) => {
     setTransferList(prev => prev.filter((_, i) => i !== index));
@@ -144,28 +154,8 @@ const TransferenciaProductosPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      let imageUrl = '';
-      if (transferImage) {
-        const formData = new FormData();
-        formData.append('file', transferImage);
-        formData.append('upload_preset', 'xgmwzgac');
-
-        const imageResponse = await fetch('https://api.cloudinary.com/v1_1/dpsrtoyp7/image/upload', {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!imageResponse.ok) {
-          throw new Error('Error al subir la imagen de evidencia');
-        }
-
-        const imageData = await imageResponse.json();
-        imageUrl = imageData.secure_url;
-      }
-
       const transferData = {
         transfers: transferList,
-        evidenceImageUrl: imageUrl
       };
 
       const response = await fetch('/api/transfers', {
@@ -181,24 +171,6 @@ const TransferenciaProductosPage: React.FC = () => {
       }
 
       const responseData = await response.json();
-      const pdfBase64 = responseData.pdfUrl.split(',')[1];
-
-      const byteCharacters = atob(pdfBase64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'application/pdf' });
-
-      const pdfUrl = URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.setAttribute('download', 'TransferenciaProductos.pdf');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
 
       toast({
         title: "Transferencias realizadas",
@@ -210,7 +182,6 @@ const TransferenciaProductosPage: React.FC = () => {
 
       setTimeout(() => {
         setTransferList([]);
-        setTransferImage(null);
         router.push('/transferencias');
       }, 2000);
     } catch (error) {
@@ -230,7 +201,7 @@ const TransferenciaProductosPage: React.FC = () => {
     <Box minH="100vh" bg="gray.50">
       <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="stretch">
-          <Heading as="h1" size="xl" textAlign="center">Transferencia de Productos</Heading>
+          <Heading as="h1" size="xl" textAlign="center">Pedido de Productos</Heading>
           
           <form onSubmit={handleSubmit}>
             <VStack spacing={6}>
@@ -245,6 +216,7 @@ const TransferenciaProductosPage: React.FC = () => {
                   transfer={transfer}
                   onTransferChange={handleTransferChange}
                   onAddToTransferList={handleAddToTransferList}
+                  userLocation={userLocation}
                 />
               )}
 
@@ -255,19 +227,14 @@ const TransferenciaProductosPage: React.FC = () => {
                 />
               )}
 
-              <EvidenceImage
-                transferImage={transferImage}
-                onImageChange={setTransferImage}
-              />
-
               <Button
                 type="submit"
                 colorScheme="blue"
                 isLoading={isLoading}
                 loadingText="Procesando..."
-                isDisabled={transferList.length === 0 || !transferImage}
+                isDisabled={transferList.length === 0}
               >
-                Realizar Transferencias
+                Realizar Pedido
               </Button>
             </VStack>
           </form>

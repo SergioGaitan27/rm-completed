@@ -87,15 +87,15 @@ const AdminTransferenciasPage: React.FC = () => {
   );
 
   const transferenciasCategories: TransferenciaCategory[] = [
-    { name: 'Realizar transferencia', path: '/transferencias/realizar', icon: '↔️' },
-    { name: 'Historial de transferencias', path: '/transferencias/historial', icon: '🗄️' },
+    { name: 'Realizar pedido', path: '/pedidos/realizar', icon: '↔️' },
+    { name: 'Historial de mis pedidos', path: '/pedidos/historial', icon: '🗄️' },
   ];
 
   return (
     <Box minH="100vh" bg="gray.50">
       <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="stretch">
-          <Heading as="h1" textAlign="center">Administración de Transferencias</Heading>
+          <Heading as="h1" textAlign="center">Administración de Pedidos</Heading>
           
           <Box bg="white" p={6} borderRadius="md" boxShadow="md">
             <SimpleGrid columns={[1, 2]} spacing={6}>

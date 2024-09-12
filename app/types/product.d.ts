@@ -42,12 +42,22 @@ export interface IBusinessInfo {
   taxId: string;
 }
 
-interface ITransfer {
+export interface ITransfer {
   productId: string;
   productName: string;
   productCode: string;
   boxCode: string;
   imageUrl: string;
+  fromLocation: string;
+  toLocation: string;
+  quantity: number | '';
+}
+
+export interface ITransferItem {
+  productId: string;
+  productName: string;
+  productCode: string;
+  boxCode: string;
   fromLocation: string;
   toLocation: string;
   quantity: number;

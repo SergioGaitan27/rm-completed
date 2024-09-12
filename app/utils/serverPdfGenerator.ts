@@ -24,7 +24,7 @@ async function getImageDataUrl(url: string): Promise<string> {
     return `data:${mimeType};base64,${base64}`;
 }
 
-export async function generateTransferPDF(transfers: ITransferItem[], evidenceImageUrl: string): Promise<string> {
+export async function generateTransferPDF(transfers: ITransferItem[]): Promise<string> {
   const tableBody = [
     ['Producto', 'Desde', 'Hacia', 'Cantidad']
   ];
@@ -38,8 +38,6 @@ export async function generateTransferPDF(transfers: ITransferItem[], evidenceIm
     ]);
   });
 
-  const imageDataUrl = await getImageDataUrl(evidenceImageUrl);
-
   const docDefinition: TDocumentDefinitions = {
     content: [
       { text: 'Detalle de Transferencia', style: 'header' },
@@ -49,11 +47,6 @@ export async function generateTransferPDF(transfers: ITransferItem[], evidenceIm
           widths: ['*', '*', '*', '*'],
           body: tableBody
         }
-      },
-      { text: 'Evidencia:', style: 'subheader' },
-      {
-        image: imageDataUrl,
-        width: 500
       }
     ],
     styles: {

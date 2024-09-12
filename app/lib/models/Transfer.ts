@@ -1,4 +1,4 @@
-// app/lib/models/Transfer.ts
+// app/models/Transfer.ts
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ITransfer extends Document {
@@ -25,7 +25,7 @@ const TransferSchema: Schema = new Schema({
     toLocation: { type: String, required: true },
     quantity: { type: Number, required: true }
   }],
-  evidenceImageUrl: { type: String, required: true },
+  evidenceImageUrl: { type: String, required: false },
   date: { type: Date, default: Date.now }
 });
 
