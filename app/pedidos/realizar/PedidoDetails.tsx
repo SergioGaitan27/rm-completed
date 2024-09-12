@@ -13,13 +13,13 @@ import {
   HStack,
   Image,
 } from "@chakra-ui/react";
-import { Product, IStockLocation, ITransfer } from '@/app/types/product';
+import { Product, IStockLocation, IPedidoList } from '@/app/types/product';
 
-interface TransferDetailsProps {
+interface PedidoDetailsProps {
   selectedProduct: Product;
-  transfer: ITransfer;
-  onTransferChange: (field: keyof ITransfer, value: string | number) => void;
-  onAddToTransferList: () => void;
+  pedido: IPedidoList;
+  onPedidoChange: (field: keyof IPedidoList, value: string | number) => void;
+  onAddToPedidoList: () => void;
   userLocation: string;
 }
 
@@ -37,19 +37,19 @@ const calculateStockDisplay = (stockLocations: IStockLocation[], piecesPerBox: n
   });
 };
 
-const TransferDetails: React.FC<TransferDetailsProps> = ({
+const PedidoDetails: React.FC<PedidoDetailsProps> = ({
   selectedProduct,
-  transfer,
-  onTransferChange,
-  onAddToTransferList,
+  pedido,
+  onPedidoChange,
+  onAddToPedidoList,
   userLocation
 }) => {
   const handleQuantityChange = (valueString: string) => {
-    onTransferChange('quantity', valueString);
+    onPedidoChange('quantity', valueString);
   };
 
   const maxQuantity = Number(selectedProduct.stockLocations.find(
-    loc => loc.location === transfer.fromLocation
+    loc => loc.location === pedido.fromLocation
   )?.quantity || 0);
 
   const safeMaxQuantity: number = Number(maxQuantity);
@@ -69,9 +69,9 @@ const TransferDetails: React.FC<TransferDetailsProps> = ({
         <Heading as="h2" size="lg">Detalles de producto</Heading>
         
         <HStack spacing={4} align="start">
-          {transfer.imageUrl && (
+          {pedido.imageUrl && (
             <Image 
-              src={transfer.imageUrl} 
+              src={pedido.imageUrl} 
               alt={selectedProduct.name}
               boxSize="100px"
               objectFit="cover"
@@ -104,8 +104,8 @@ const TransferDetails: React.FC<TransferDetailsProps> = ({
         <FormControl>
           <FormLabel fontWeight="bold">Ubicación origen:</FormLabel>
           <Select
-            value={transfer.fromLocation}
-            onChange={(e) => onTransferChange('fromLocation', e.target.value)}
+            value={pedido.fromLocation}
+            onChange={(e) => onPedidoChange('fromLocation', e.target.value)}
           >
             <option value="">Seleccione ubicación origen</option>
             {stockDisplay.map((loc, index) => (
@@ -128,7 +128,7 @@ const TransferDetails: React.FC<TransferDetailsProps> = ({
         <FormControl>
           <FormLabel fontWeight="bold">Cantidad solicitada:</FormLabel>
           <NumberInput
-            value={transfer.quantity}
+            value={pedido.quantity}
             onChange={handleQuantityChange}
             min={0}
             max={safeMaxQuantity}
@@ -137,9 +137,9 @@ const TransferDetails: React.FC<TransferDetailsProps> = ({
           >
             <NumberInputField />
           </NumberInput>
-          {transfer.quantity !== '' && Number(transfer.quantity) > 0 && (
+          {pedido.quantity !== '' && Number(pedido.quantity) > 0 && (
             <Text fontSize="sm" color="gray.600" mt={1}>
-              Conversión a cajas y piezas: {formatQuantityDisplay(Number(transfer.quantity))}
+              Conversión a cajas y piezas: {formatQuantityDisplay(Number(pedido.quantity))}
             </Text>
           )}
           <Text fontSize="sm" color="gray.600" mt={1}>
@@ -150,12 +150,12 @@ const TransferDetails: React.FC<TransferDetailsProps> = ({
 
         <Button
           colorScheme="blue"
-          onClick={onAddToTransferList}
+          onClick={onAddToPedidoList}
           isDisabled={
-            !transfer.fromLocation || 
-            transfer.quantity === '' ||
-            Number(transfer.quantity) === 0 ||
-            Number(transfer.quantity) > safeMaxQuantity
+            !pedido.fromLocation || 
+            pedido.quantity === '' ||
+            Number(pedido.quantity) === 0 ||
+            Number(pedido.quantity) > safeMaxQuantity
           }
         >
           Agregar a la lista
@@ -165,4 +165,4 @@ const TransferDetails: React.FC<TransferDetailsProps> = ({
   );
 };
 
-export default TransferDetails;
+export default PedidoDetails;

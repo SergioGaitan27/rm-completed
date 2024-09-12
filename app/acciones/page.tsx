@@ -214,6 +214,9 @@ const SalesPage: React.FC = () => {
       case '231089-P':
         setIsPriceAdjustmentModalOpen(true);
         break;
+      case 'PEDIDO':
+        window.open('/pedidos', '_blank');
+        break;
       default:
         const result = products.find(product => 
           product.boxCode.toLowerCase() === searchTerm.toLowerCase() ||

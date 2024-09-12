@@ -1,19 +1,6 @@
 // app/models/Pedido.ts
 import mongoose, { Schema, Document } from 'mongoose';
-
-export interface IPedido extends Document {
-  pedidos: Array<{
-    productId: string;
-    productName: string;
-    productCode: string;
-    boxCode: string;
-    fromLocation: string;
-    toLocation: string;
-    quantity: number;
-  }>;
-  evidenceImageUrl: string;
-  date: Date;
-}
+import { IPedidos } from '@/app/types/product';
 
 const PedidoSchema: Schema = new Schema({
   pedidos: [{
@@ -26,7 +13,8 @@ const PedidoSchema: Schema = new Schema({
     quantity: { type: Number, required: true }
   }],
   evidenceImageUrl: { type: String, required: false },
-  date: { type: Date, default: Date.now }
+  date: { type: Date, default: Date.now },
+  isSurtido: { type: Boolean, default: false }
 });
 
-export default mongoose.models.Pedido || mongoose.model<IPedido>('Pedido', PedidoSchema);
+export default mongoose.models.Pedido || mongoose.model<IPedidos>('Pedido', PedidoSchema);

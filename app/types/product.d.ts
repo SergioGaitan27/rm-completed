@@ -42,7 +42,56 @@ export interface IBusinessInfo {
   taxId: string;
 }
 
-export interface ITransfer {
+export interface ITransferItem {
+  productId: string;
+  productName: string;
+  productCode: string;
+  boxCode: string;
+  fromLocation: string;
+  toLocation: string;
+  quantity: number;
+}
+
+//////////// PEDIDOS ///////////////////////////////
+
+export interface IPedidos extends Document {
+  _id: string;
+  pedidos: Array<{
+    productId: string;
+    productName: string;
+    productCode: string;
+    boxCode: string;
+    fromLocation: string;
+    toLocation: string;
+    quantity: number;
+  }>;
+  evidenceImageUrl: string;
+  date: Date;
+  isSurtido: boolean;
+}
+
+export interface IPedidoItem {
+  productId: string;
+  productName: string;
+  productCode: string;
+  boxCode: string;
+  fromLocation: string;
+  toLocation: string;
+  quantity: number;
+}
+
+export type PedidoCategory = {
+  name: string;
+  path: string;
+  icon: string;
+};
+
+export interface PedidoListProps {
+  pedidoList: IPedidos[];
+  onRemoveTransfer: (index: number) => void;
+}
+
+export interface IPedidoList {
   productId: string;
   productName: string;
   productCode: string;
@@ -55,12 +104,10 @@ export interface ITransfer {
   quantity: number | '';
 }
 
-export interface ITransferItem {
-  productId: string;
-  productName: string;
-  productCode: string;
-  boxCode: string;
-  fromLocation: string;
-  toLocation: string;
-  quantity: number;
+
+export interface IPedidoNumber {
+  _id: string;
+  pedidos: IPedidoItem[];
+  evidenceImageUrl: string;
+  date: string;
 }

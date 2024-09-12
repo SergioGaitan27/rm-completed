@@ -11,11 +11,11 @@ import {
   Flex,
 } from "@chakra-ui/react";
 import Image from 'next/image';
-import { ITransfer } from '@/app/types/product';
+import { IPedidoList } from '@/app/types/product';
 
-interface TransferListProps {
-  transferList: ITransfer[];
-  onRemoveTransfer: (index: number) => void;
+interface PedidoListProps {
+  pedidoList: IPedidoList[];
+  onRemovePedido: (index: number) => void;
 }
 
 const formatQuantityDisplay = (quantity: number | string, piecesPerBox: number) => {
@@ -26,16 +26,16 @@ const formatQuantityDisplay = (quantity: number | string, piecesPerBox: number) 
   return `${boxes} ${boxes === 1 ? 'caja' : 'cajas'}${loosePieces > 0 ? ` y ${loosePieces} ${loosePieces === 1 ? 'pieza' : 'piezas'}` : ''}`;
 };
 
-const TransferList: React.FC<TransferListProps> = ({ transferList, onRemoveTransfer }) => {
-  const totalProducts = transferList.reduce((total, item) => total + Number(item.quantity), 0);
+const PedidoList: React.FC<PedidoListProps> = ({ pedidoList, onRemovePedido }) => {
+  const totalProducts = pedidoList.reduce((total, item) => total + Number(item.quantity), 0);
 
   return (
     <Box bg="white" p={6} borderRadius="md" boxShadow="md" w="full">
       <Heading as="h2" size="lg" mb={4} textAlign="center">
-        Total de productos a transferir: {totalProducts}
+        Lista de productos en el pedido.
       </Heading>
       <SimpleGrid columns={[1, null, 2]} spacing={6}>
-        {transferList.map((item, index) => (
+        {pedidoList.map((item, index) => (
           <Card key={index}>
             <CardBody>
               <Flex>
@@ -59,7 +59,7 @@ const TransferList: React.FC<TransferListProps> = ({ transferList, onRemoveTrans
                   <Button
                     colorScheme="red"
                     size="sm"
-                    onClick={() => onRemoveTransfer(index)}
+                    onClick={() => onRemovePedido(index)}
                   >
                     Eliminar
                   </Button>
@@ -73,4 +73,4 @@ const TransferList: React.FC<TransferListProps> = ({ transferList, onRemoveTrans
   );
 };
 
-export default TransferList;
+export default PedidoList;

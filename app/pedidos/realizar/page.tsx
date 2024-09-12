@@ -14,18 +14,18 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import ProductSearch from './ProductSearch';
-import TransferDetails from './TransferDetails';
-import TransferList from './TransferList';
-import { Product, ITransfer, IStockLocation } from '@/app/types/product';
+import PedidoDetails from './PedidoDetails';
+import PedidoList from './PedidoList';
+import { Product, IPedidoList } from '@/app/types/product';
 
-const TransferenciaProductosPage: React.FC = () => {
+const PedidoProductosPage: React.FC = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
   const toast = useToast();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [transfer, setTransfer] = useState<ITransfer>({
+  const [pedido, setPedido] = useState<IPedidoList>({
     productId: '',
     productName: '',
     productCode: '',
@@ -37,7 +37,7 @@ const TransferenciaProductosPage: React.FC = () => {
     quantity: 0,
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [transferList, setTransferList] = useState<ITransfer[]>([]);
+  const [pedidoList, setPedidoList] = useState<IPedidoList[]>([]);
   const [userLocation, setUserLocation] = useState<string>('');
 
   useEffect(() => {
@@ -71,7 +71,7 @@ const TransferenciaProductosPage: React.FC = () => {
 
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
-    setTransfer(prev => ({
+    setPedido(prev => ({
       ...prev,
       productId: product._id,
       productName: product.name,
@@ -83,39 +83,39 @@ const TransferenciaProductosPage: React.FC = () => {
     }));
   };
 
-  const handleTransferChange = (field: keyof ITransfer, value: string | number) => {
-    setTransfer(prev => {
-      const newTransfer = { ...prev };
+  const handlepedidoChange = (field: keyof IPedidoList, value: string | number) => {
+    setPedido(prev => {
+      const newPedido = { ...prev };
       
       if (field === 'quantity') {
         if (value === '') {
-          newTransfer.quantity = '';
+          newPedido.quantity = '';
         } else {
           const numValue = Number(value);
-          newTransfer.quantity = isNaN(numValue) ? 0 : numValue;
+          newPedido.quantity = isNaN(numValue) ? 0 : numValue;
         }
       } else {
-        (newTransfer as any)[field] = value;
+        (newPedido as any)[field] = value;
       }
       
       if (field === 'quantity' || field === 'fromLocation') {
-        const fromLocation = selectedProduct?.stockLocations.find(loc => loc.location === newTransfer.fromLocation);
+        const fromLocation = selectedProduct?.stockLocations.find(loc => loc.location === newPedido.fromLocation);
         const availableQuantity = Number(fromLocation?.quantity || 0);
         
-        if (typeof newTransfer.quantity === 'number' && newTransfer.quantity > availableQuantity) {
-          newTransfer.quantity = availableQuantity;
+        if (typeof newPedido.quantity === 'number' && newPedido.quantity > availableQuantity) {
+          newPedido.quantity = availableQuantity;
         }
       }
       
-      return newTransfer;
+      return newPedido;
     });
   };
 
-  const handleAddToTransferList = () => {
-    const isDuplicate = transferList.some(item => 
-      item.productId === transfer.productId && 
-      item.fromLocation === transfer.fromLocation && 
-      item.toLocation === transfer.toLocation
+  const handleAddToPedidoList = () => {
+    const isDuplicate = pedidoList.some(item => 
+      item.productId === pedido.productId && 
+      item.fromLocation === pedido.fromLocation && 
+      item.toLocation === pedido.toLocation
     );
   
     if (isDuplicate) {
@@ -129,15 +129,15 @@ const TransferenciaProductosPage: React.FC = () => {
       return;
     }
   
-    if (selectedProduct && transfer.fromLocation && transfer.toLocation && 
-      (typeof transfer.quantity === 'number' && transfer.quantity > 0)) {
-        setTransferList(prev => [...prev, {
-          ...transfer,
-          quantity: Number(transfer.quantity),
+    if (selectedProduct && pedido.fromLocation && pedido.toLocation && 
+      (typeof pedido.quantity === 'number' && pedido.quantity > 0)) {
+        setPedidoList(prev => [...prev, {
+          ...pedido,
+          quantity: Number(pedido.quantity),
           piecesPerBox: selectedProduct.piecesPerBox  // Add this line
         }]);
     setSelectedProduct(null);
-    setTransfer({
+    setPedido({
       productId: '',
       productName: '',
       productCode: '',
@@ -151,43 +151,42 @@ const TransferenciaProductosPage: React.FC = () => {
   }
 };
 
-  const handleRemoveFromTransferList = (index: number) => {
-    setTransferList(prev => prev.filter((_, i) => i !== index));
+  const handleRemoveFromPedidoList = (index: number) => {
+    setPedidoList(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
+  
     try {
-      const transferData = {
-        transfers: transferList,
+      const pedidoData = {
+        pedidos: pedidoList,
+        isSurtido: false  // Asegúrate de que este campo esté presente
       };
-
-      const response = await fetch('/api/transfers', {
+  
+      const response = await fetch('/api/pedidos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(transferData),
+        body: JSON.stringify(pedidoData),
       });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const responseData = await response.json();
-
       toast({
-        title: "Transferencias realizadas",
-        description: "Las transferencias se han realizado exitosamente.",
+        title: "Pedido realizado",
+        description: "El pedido se ha realizado exitosamente.",
         status: "success",
         duration: 3000,
         isClosable: true,
       });
 
       setTimeout(() => {
-        setTransferList([]);
+        setPedidoList([]);
         router.push('/pedidos');
       }, 2000);
     } catch (error) {
@@ -217,19 +216,19 @@ const TransferenciaProductosPage: React.FC = () => {
               />
 
               {selectedProduct && (
-                <TransferDetails
+                <PedidoDetails
                   selectedProduct={selectedProduct}
-                  transfer={transfer}
-                  onTransferChange={handleTransferChange}
-                  onAddToTransferList={handleAddToTransferList}
+                  pedido={pedido}
+                  onPedidoChange={handlepedidoChange}
+                  onAddToPedidoList={handleAddToPedidoList}
                   userLocation={userLocation}
                 />
               )}
 
-              {transferList.length > 0 && (
-                <TransferList
-                  transferList={transferList}
-                  onRemoveTransfer={handleRemoveFromTransferList}
+              {pedidoList.length > 0 && (
+                <PedidoList
+                  pedidoList={pedidoList}
+                  onRemovePedido={handleRemoveFromPedidoList}
                 />
               )}
 
@@ -238,7 +237,7 @@ const TransferenciaProductosPage: React.FC = () => {
                 colorScheme="blue"
                 isLoading={isLoading}
                 loadingText="Procesando..."
-                isDisabled={transferList.length === 0}
+                isDisabled={pedidoList.length === 0}
               >
                 Realizar Pedido
               </Button>
@@ -250,4 +249,4 @@ const TransferenciaProductosPage: React.FC = () => {
   );
 };
 
-export default TransferenciaProductosPage;
+export default PedidoProductosPage;

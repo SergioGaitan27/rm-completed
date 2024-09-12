@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import {
   Box,
   Container,
@@ -17,48 +16,32 @@ import {
   Card,
   CardBody,
   Stack,
-  Divider,
   useToast,
 } from "@chakra-ui/react";
 
-interface ITransferItem {
-  productId: string;
-  productName: string;
-  productCode: string;
-  boxCode: string;
-  fromLocation: string;
-  toLocation: string;
-  quantity: number;
-}
+import { IPedidoNumber } from '@/app/types/product';
 
-interface ITransfer {
-  _id: string;
-  transfers: ITransferItem[];
-  evidenceImageUrl: string;
-  date: string;
-}
-
-const TransferenciaDetallePage = ({ params }: { params: { transferNumber: string } }) => {
+const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => {
   const { data: session, status } = useSession();
   const router = useRouter();
   const toast = useToast();
-  const [transfer, setTransfer] = useState<ITransfer | null>(null);
+  const [pedido, setPedido] = useState<IPedidoNumber | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchTransferDetails = useCallback(async () => {
+  const fetchPedidoDetails = useCallback(async () => {
     try {
-      const response = await fetch(`/api/transfers/${params.transferNumber}`);
+      const response = await fetch(`/api/pedidos/${params.pedidoNumber}`);
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch transfer details');
+        throw new Error(errorData.message || 'Error al obtener los detalles del pedido');
       }
       const data = await response.json();
-      setTransfer(data);
+      setPedido(data);
     } catch (error) {
-      console.error('Error fetching transfer details:', error);
+      console.error('Error al obtener los detalles del pedido:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : 'Error al cargar los detalles de la transferencia',
+        description: error instanceof Error ? error.message : 'Error al obtener los detalles del pedido',
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -66,15 +49,15 @@ const TransferenciaDetallePage = ({ params }: { params: { transferNumber: string
     } finally {
       setIsLoading(false);
     }
-  }, [params.transferNumber, toast]);
+  }, [params.pedidoNumber, toast]);
 
   useEffect(() => {
     if (status === 'authenticated') {
-      fetchTransferDetails();
+      fetchPedidoDetails();
     } else if (status === 'unauthenticated') {
       router.push('/login');
     }
-  }, [status, router, fetchTransferDetails]);
+  }, [status, router, fetchPedidoDetails]);
 
   if (status === 'loading' || isLoading) {
     return (
@@ -85,31 +68,31 @@ const TransferenciaDetallePage = ({ params }: { params: { transferNumber: string
   }
 
   if (!session) return null;
-  if (!transfer) return <Text>No se encontró la transferencia</Text>;
+  if (!pedido) return <Text>No se encontró el pedido</Text>;
 
   return (
     <Box minH="100vh" bg="gray.50">
       <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="stretch">
-          <Heading as="h1" size="xl" textAlign="center">Detalles de Transferencia</Heading>
+          <Heading as="h1" size="xl" textAlign="center">Detalles del Pedido</Heading>
           
           <Card>
             <CardBody>
               <Heading as="h2" size="lg" mb={4}>Información General</Heading>
               <Stack spacing={2}>
-                <Text><strong>ID de Transferencia:</strong> {transfer._id}</Text>
-                <Text><strong>Fecha:</strong> {new Date(transfer.date).toLocaleString()}</Text>
-                <Text><strong>Total de Productos:</strong> {transfer.transfers.length}</Text>
-                <Text><strong>Total de Unidades:</strong> {transfer.transfers.reduce((acc, t) => acc + t.quantity, 0)}</Text>
+                <Text><strong>ID de Pedido:</strong> {pedido._id}</Text>
+                <Text><strong>Fecha:</strong> {new Date(pedido.date).toLocaleString()}</Text>
+                <Text><strong>Total de Productos:</strong> {pedido.pedidos.length}</Text>
+                <Text><strong>Total de Unidades:</strong> {pedido.pedidos.reduce((acc, t) => acc + t.quantity, 0)}</Text>
               </Stack>
             </CardBody>
           </Card>
 
           <Card>
             <CardBody>
-              <Heading as="h2" size="lg" mb={4}>Productos Transferidos</Heading>
+              <Heading as="h2" size="lg" mb={4}>Productos Solicitados</Heading>
               <VStack spacing={4} align="stretch">
-                {transfer.transfers.map((item, index) => (
+                {pedido.pedidos.map((item, index) => (
                   <Box key={index} p={4} borderWidth={1} borderRadius="md">
                     <Heading as="h3" size="md" mb={2}>{item.productName}</Heading>
                     <SimpleGrid columns={[1, 2]} spacing={2}>
@@ -125,22 +108,6 @@ const TransferenciaDetallePage = ({ params }: { params: { transferNumber: string
             </CardBody>
           </Card>
 
-          {transfer.evidenceImageUrl && (
-            <Card>
-              <CardBody>
-                <Heading as="h2" size="lg" mb={4}>Evidencia</Heading>
-                <Box position="relative" height="300px">
-                  <Image
-                    src={transfer.evidenceImageUrl}
-                    alt="Evidencia de transferencia"
-                    fill
-                    style={{ objectFit: 'contain' }}
-                  />
-                </Box>
-              </CardBody>
-            </Card>
-          )}
-
           <Button 
             onClick={() => router.back()} 
             colorScheme="blue"
@@ -154,4 +121,4 @@ const TransferenciaDetallePage = ({ params }: { params: { transferNumber: string
   );
 };
 
-export default TransferenciaDetallePage;
+export default PedidoDetallePage;

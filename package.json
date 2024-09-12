@@ -28,6 +28,8 @@
     "next-auth": "^4.24.7",
     "node-fetch": "^3.3.2",
     "pdfmake": "^0.2.12",
+    "pusher": "^5.2.0",
+    "pusher-js": "^8.4.0-rc2",
     "react": "^18",
     "react-day-picker": "^9.0.9",
     "react-dom": "^18",
