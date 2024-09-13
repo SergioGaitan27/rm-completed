@@ -23,6 +23,7 @@ import {
 } from "@chakra-ui/react";
 
 import { IPedidoNumber, IPedidoItem } from '@/app/types/product';
+import { UserRole } from '@/app/lib/actions/categories';
 
 const calculateBoxesAndPieces = (quantity: number, piecesPerBox: number): string => {
   if (piecesPerBox <= 1) return `${quantity} piezas`;
@@ -150,6 +151,11 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
     }
   };
 
+  const canMarkAsSurtido = useCallback(() => {
+    const userRole = session?.user?.role as UserRole;
+    return userRole === 'super_administrador' || userRole === 'sistemas';
+  }, [session]);
+
   if (status === 'loading' || isLoading) {
     return (
       <Flex minH="100vh" alignItems="center" justifyContent="center">
@@ -189,7 +195,7 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
 
           <Card>
             <CardBody>
-              <Heading as="h2" size="lg" mb={4}>Productos Solicitados</Heading>
+              <Heading as="h2" size="lg" mb={4}>Productos solicitados</Heading>
               <VStack spacing={4} align="stretch">
                 {pedido.pedidos.map((item: IPedidoItem, index: number) => (
                   <Box key={index} p={4} borderWidth={1} borderRadius="md">
@@ -209,10 +215,10 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
             </CardBody>
           </Card>
 
-          {!pedido.isSurtido && (
+          {!pedido.isSurtido && canMarkAsSurtido() && (
             <Card>
               <CardBody>
-                <Heading as="h2" size="lg" mb={4}>Marcar como Surtido</Heading>
+                <Heading as="h2" size="lg" mb={4}>Marcar como surtido</Heading>
                 <VStack spacing={4} align="stretch">
                   <Text>Sube una imagen como evidencia antes de marcar el pedido como surtido:</Text>
                   <Input
