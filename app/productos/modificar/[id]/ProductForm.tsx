@@ -293,12 +293,15 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onBack }) 
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUppercaseChange(e, handleChange)}
                           />
                           <Field
-                            as={NumberInput}
+                            as={Input}
+                            type="number"
                             name={`stockLocations.${index}.quantity`}
+                            placeholder="Cantidad"
+                            onChange={handleChange}
+                            onBlur={handleBlur}
+                            value={location.quantity}
                             min={0}
-                          >
-                            <NumberInputField placeholder="Cantidad" />
-                          </Field>
+                          />
                           <IconButton
                             aria-label="Eliminar ubicación"
                             icon={<DeleteIcon />}
