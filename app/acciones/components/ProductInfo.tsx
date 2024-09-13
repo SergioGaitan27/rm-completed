@@ -19,6 +19,7 @@ interface ProductInfoProps {
   handleAddFromDetails: () => void;
   productSearchedFromBottom: boolean;
   calculateStockDisplay: (stockLocations: IStockLocation[], piecesPerBox: number) => any[];
+  getCartQuantity: (productId: string) => number;
 }
 
 const ProductInfo: React.FC<ProductInfoProps> = ({
@@ -33,8 +34,16 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
   isProductAvailable,
   handleAddFromDetails,
   productSearchedFromBottom,
-  calculateStockDisplay
+  calculateStockDisplay,
+  getCartQuantity
 }) => {
+
+  const getAvailableQuantity = (product: Product) => {
+    const totalQuantity = getRemainingQuantity(product);
+    const cartQuantity = getCartQuantity(product._id);
+    return totalQuantity - cartQuantity;
+  };
+
   return (
     <>
       <div className="mb-4 mt-4 flex relative">
@@ -97,7 +106,11 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
               <p>Precio caja: ${productInfoBottom.price3.toFixed(2)} (Cantidad mínima: {productInfoBottom.price3MinQty})</p>
               {productInfoBottom.price4 && <p>Precio 4: ${productInfoBottom.price4.toFixed(2)}</p>}
               {productInfoBottom.price5 && <p>Precio 5: ${productInfoBottom.price5.toFixed(2)}</p>}
-              <p className="font-bold mt-2">Cantidad disponible: {getRemainingQuantity(productInfoBottom)} piezas</p>
+              <p className="font-bold mt-2">
+                Cantidad disponible: {getAvailableQuantity(productInfoBottom)} piezas
+                {getCartQuantity(productInfoBottom._id) > 0 && 
+                  ` (${getCartQuantity(productInfoBottom._id)} en carrito)`}
+              </p>
               <h4 className="font-bold mt-2">Ubicaciones de stock:</h4>
               <ul>
                 {calculateStockDisplay(productInfoBottom.stockLocations, productInfoBottom.piecesPerBox).map((location, index) => (

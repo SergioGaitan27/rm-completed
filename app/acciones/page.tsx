@@ -306,14 +306,14 @@ const SalesPage: React.FC = () => {
     return 0;
   }, [session]);
 
-  const getCartQuantity = (productId: string): number => {
+  const getCartQuantity = useCallback((productId: string): number => {
     return cart.reduce((total, item) => {
       if (item._id === productId) {
         return total + (item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity);
       }
       return total;
     }, 0);
-  };
+  }, [cart]);
 
   const handleAddToCart = () => {
     if (selectedProduct) {
@@ -835,11 +835,12 @@ const SalesPage: React.FC = () => {
               filteredProducts={filteredProducts}
               handleSelectProduct={handleSelectProduct}
               productInfoBottom={productInfoBottom}
-              getRemainingQuantity={getRemainingQuantity}
               isProductAvailable={isProductAvailable}
               handleAddFromDetails={handleAddFromDetails}
               productSearchedFromBottom={productSearchedFromBottom}
               calculateStockDisplay={calculateStockDisplay}
+              getRemainingQuantity={getRemainingQuantity}
+              getCartQuantity={getCartQuantity}
             />
           </CardContent>
         </Card>
