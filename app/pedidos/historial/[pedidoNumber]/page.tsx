@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
@@ -20,29 +20,19 @@ import {
   Badge,
 } from "@chakra-ui/react";
 
-// Actualiza la interfaz IPedidoNumber para incluir los tipos correctos
-interface IPedidoItem {
-  productName: string;
-  productCode: string;
-  boxCode: string;
-  fromLocation: string;
-  toLocation: string;
-  quantity: number;
-  piecesPerBox: number;
-}
+import { IPedidoNumber, IPedidoItem } from '@/app/types/product';
 
-interface IPedidoNumber {
-  _id: string;
-  date: string;
-  pedidos: IPedidoItem[];
-  isSurtido: boolean;
-}
-
-const formatQuantityDisplay = (quantity: number, piecesPerBox: number): string => {
-  if (isNaN(quantity) || quantity === 0) return '';
+// Función de utilidad para calcular cajas y piezas
+const calculateBoxesAndPieces = (quantity: number, piecesPerBox: number): string => {
+  if (piecesPerBox <= 1) return `${quantity} piezas`;
+  
   const boxes = Math.floor(quantity / piecesPerBox);
-  const loosePieces = quantity % piecesPerBox;
-  return `${boxes} ${boxes === 1 ? 'caja' : 'cajas'}${loosePieces > 0 ? ` y ${loosePieces} ${loosePieces === 1 ? 'pieza' : 'piezas'}` : ''}`;
+  const pieces = quantity % piecesPerBox;
+  let result = '';
+  if (boxes > 0) result += `${boxes} caja${boxes > 1 ? 's' : ''}`;
+  if (boxes > 0 && pieces > 0) result += ' y ';
+  if (pieces > 0) result += `${pieces} pieza${pieces > 1 ? 's' : ''}`;
+  return result;
 };
 
 const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => {
@@ -59,7 +49,7 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
         const errorData = await response.json();
         throw new Error(errorData.message || 'Error al obtener los detalles del pedido');
       }
-      const data: IPedidoNumber = await response.json();
+      const data = await response.json();
       setPedido(data);
     } catch (error) {
       console.error('Error al obtener los detalles del pedido:', error);
@@ -94,9 +84,6 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
   if (!session) return null;
   if (!pedido) return <Text>No se encontró el pedido</Text>;
 
-  const totalUnidades = pedido.pedidos.reduce((acc, t) => acc + t.quantity, 0);
-  const piecesPerBoxForTotal = pedido.pedidos[0]?.piecesPerBox || 1;
-
   return (
     <Box minH="100vh" bg="gray.50">
       <Container maxW="container.xl" py={8}>
@@ -111,9 +98,7 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
                 <Text><strong>Fecha:</strong> {new Date(pedido.date).toLocaleString()}</Text>
                 <Text><strong>Total de Productos:</strong> {pedido.pedidos.length}</Text>
                 <Text>
-                  <strong>Total de Unidades:</strong> {totalUnidades}
-                  {' '}
-                  ({formatQuantityDisplay(totalUnidades, piecesPerBoxForTotal)})
+                  <strong>Total de Unidades:</strong> {pedido.pedidos.reduce((acc, t) => acc + t.quantity, 0)}
                 </Text>
                 <Flex alignItems="center">
                   <Text mr={2}><strong>Estado:</strong></Text>
@@ -129,7 +114,7 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
             <CardBody>
               <Heading as="h2" size="lg" mb={4}>Productos Solicitados</Heading>
               <VStack spacing={4} align="stretch">
-                {pedido.pedidos.map((item, index) => (
+                {pedido.pedidos.map((item: IPedidoItem, index: number) => (
                   <Box key={index} p={4} borderWidth={1} borderRadius="md">
                     <Heading as="h3" size="md" mb={2}>{item.productName}</Heading>
                     <SimpleGrid columns={[1, 2]} spacing={2}>
@@ -138,9 +123,7 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
                       <Text><strong>Desde:</strong> {item.fromLocation}</Text>
                       <Text><strong>Hacia:</strong> {item.toLocation}</Text>
                       <Text>
-                        <strong>Cantidad:</strong> {item.quantity}
-                        {' '}
-                        ({formatQuantityDisplay(item.quantity, item.piecesPerBox)})
+                        <strong>Cantidad:</strong> {item.quantity} ({calculateBoxesAndPieces(item.quantity, item.piecesPerBox)})
                       </Text>
                     </SimpleGrid>
                   </Box>

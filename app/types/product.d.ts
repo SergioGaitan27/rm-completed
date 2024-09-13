@@ -78,6 +78,7 @@ export interface IPedidoItem {
   fromLocation: string;
   toLocation: string;
   quantity: number;
+  piecesPerBox: number; 
 }
 
 export type PedidoCategory = {
