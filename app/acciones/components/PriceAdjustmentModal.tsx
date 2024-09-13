@@ -8,6 +8,7 @@ import { CartItem } from '@/app/types/product';
 
 interface AdjustedCartItem extends CartItem {
   adjustedPrice: number;
+  totalPieces: number;
 }
 
 interface PriceAdjustmentModalProps {
@@ -29,13 +30,20 @@ const PriceAdjustmentModal: React.FC<PriceAdjustmentModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      // Agregar productos duplicados y calcular cantidades totales
+      // Agrupa los productos y calcula las piezas totales
       const groupedCart = cart.reduce((acc, item) => {
         const existingItem = acc.find(i => i._id === item._id);
+        const totalPieces = item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity;
+        
         if (existingItem) {
           existingItem.quantity += item.quantity;
+          existingItem.totalPieces += totalPieces;
         } else {
-          acc.push({...item, adjustedPrice: item.price3});
+          acc.push({
+            ...item,
+            adjustedPrice: item.appliedPrice,
+            totalPieces: totalPieces
+          });
         }
         return acc;
       }, [] as AdjustedCartItem[]);
@@ -50,7 +58,7 @@ const PriceAdjustmentModal: React.FC<PriceAdjustmentModalProps> = ({
     const newAdjustedCart = adjustedCart.map(item => {
       let newPrice;
       if (adjustmentType === 'discount') {
-        newPrice = item.price3 * (1 - value / 100);
+        newPrice = item.appliedPrice * (1 - value / 100);
       } else {
         newPrice = item.cost * (1 + value / 100);
       }
@@ -65,8 +73,7 @@ const PriceAdjustmentModal: React.FC<PriceAdjustmentModalProps> = ({
 
   const calculateTotalProfit = () => {
     return adjustedCart.reduce((total, item) => {
-      const quantity = item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity;
-      const profit = (item.adjustedPrice - item.cost) * quantity;
+      const profit = (item.adjustedPrice - item.cost) * item.totalPieces;
       return total + profit;
     }, 0);
   };
@@ -120,7 +127,10 @@ const PriceAdjustmentModal: React.FC<PriceAdjustmentModalProps> = ({
                 {adjustedCart.map((item) => (
                   <tr key={item._id}>
                     <td>{item.name}</td>
-                    <td className="text-center">{item.quantity} {item.unitType}</td>
+                    <td className="text-center">
+                      {Math.floor(item.totalPieces / item.piecesPerBox)} cajas +{' '}
+                      {item.totalPieces % item.piecesPerBox} piezas
+                    </td>
                     <td className="text-center">${item.cost.toFixed(2)}</td>
                     <td className="text-center">${item.price3.toFixed(2)}</td>
                     <td className="text-center text-red-500">${item.adjustedPrice.toFixed(2)}</td>
