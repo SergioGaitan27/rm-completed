@@ -26,27 +26,32 @@ const PriceAdjustmentModal: React.FC<PriceAdjustmentModalProps> = ({
   const [adjustmentType, setAdjustmentType] = useState<'discount' | 'markup'>('discount');
   const [adjustmentValue, setAdjustmentValue] = useState<string>('');
   const [adjustedCart, setAdjustedCart] = useState<AdjustedCartItem[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setAdjustedCart(cart.map(item => ({ ...item, adjustedPrice: item.price3 })));
+      // Agregar productos duplicados y calcular cantidades totales
+      const groupedCart = cart.reduce((acc, item) => {
+        const existingItem = acc.find(i => i._id === item._id);
+        if (existingItem) {
+          existingItem.quantity += item.quantity;
+        } else {
+          acc.push({...item, adjustedPrice: item.price3});
+        }
+        return acc;
+      }, [] as AdjustedCartItem[]);
+      
+      setAdjustedCart(groupedCart);
       setAdjustmentValue('');
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
     }
   }, [isOpen, cart]);
 
   const calculateAdjustment = () => {
     const value = parseFloat(adjustmentValue) || 0;
-    const newAdjustedCart = cart.map(item => {
+    const newAdjustedCart = adjustedCart.map(item => {
       let newPrice;
       if (adjustmentType === 'discount') {
-        // Aplicar descuento sobre el precio de caja (price3)
         newPrice = item.price3 * (1 - value / 100);
       } else {
-        // Aplicar margen sobre el costo
         newPrice = item.cost * (1 + value / 100);
       }
       return { ...item, adjustedPrice: newPrice };
@@ -60,7 +65,8 @@ const PriceAdjustmentModal: React.FC<PriceAdjustmentModalProps> = ({
 
   const calculateTotalProfit = () => {
     return adjustedCart.reduce((total, item) => {
-      const profit = (item.adjustedPrice - item.cost) * item.quantity;
+      const quantity = item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity;
+      const profit = (item.adjustedPrice - item.cost) * quantity;
       return total + profit;
     }, 0);
   };
@@ -72,7 +78,7 @@ const PriceAdjustmentModal: React.FC<PriceAdjustmentModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl"> {/* Aumentamos el ancho máximo para acomodar la nueva columna */}
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>Ajuste de Precios</DialogTitle>
         </DialogHeader>
@@ -92,12 +98,11 @@ const PriceAdjustmentModal: React.FC<PriceAdjustmentModalProps> = ({
           </RadioGroup>
           <div className="flex items-center space-x-2">
             <Input
-                type="number"
-                value={adjustmentValue}
-                onChange={(e) => setAdjustmentValue(e.target.value)}
-                placeholder="Porcentaje"
-                ref={inputRef}
-                />
+              type="number"
+              value={adjustmentValue}
+              onChange={(e) => setAdjustmentValue(e.target.value)}
+              placeholder="Porcentaje"
+            />
             <span>%</span>
           </div>
           <div className="max-h-60 overflow-y-auto">
@@ -105,9 +110,8 @@ const PriceAdjustmentModal: React.FC<PriceAdjustmentModalProps> = ({
               <thead>
                 <tr>
                   <th className="text-left">Producto</th>
+                  <th className="text-center">Cantidad</th>
                   <th className="text-center">Costo</th>
-                  <th className="text-center">Precio Regular</th>
-                  <th className="text-center">Precio Mayoreo</th>
                   <th className="text-center">Precio Caja</th>
                   <th className="text-center">Precio Ajustado</th>
                 </tr>
@@ -116,11 +120,10 @@ const PriceAdjustmentModal: React.FC<PriceAdjustmentModalProps> = ({
                 {adjustedCart.map((item) => (
                   <tr key={item._id}>
                     <td>{item.name}</td>
+                    <td className="text-center">{item.quantity} {item.unitType}</td>
                     <td className="text-center">${item.cost.toFixed(2)}</td>
-                    <td className="text-center">${item.price1.toFixed(2)}</td>
-                    <td className="text-center">${item.price2.toFixed(2)}</td>
                     <td className="text-center">${item.price3.toFixed(2)}</td>
-                    <th className="text-center text-red-500">${item.adjustedPrice.toFixed(2)}</th>
+                    <td className="text-center text-red-500">${item.adjustedPrice.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
