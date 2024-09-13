@@ -31,7 +31,7 @@ interface Product {
 interface ProductCardProps {
   product: Product;
   userLocation: string;
-  userRole: string; // Nueva prop para el rol del usuario
+  userRole: string;
 }
 
 const getProductStatus = (product: Product, userLocation: string): 'inStock' | 'available' | 'unavailable' => {
@@ -120,11 +120,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, userLocation, userRo
             />
           </Box>
         )}
-        <Heading as="h3" size="md">{product.name} {getAvailabilityBadge() }</Heading>
+        <Heading as="h3" size="md">{product.name} {getAvailabilityBadge()}</Heading>
         <Text fontSize="sm"><strong>Código de caja:</strong> {product.boxCode}</Text>
         <Text fontSize="sm"><strong>Código de producto:</strong> {product.productCode}</Text>
         <Text fontSize="sm"><strong>Piezas por caja:</strong> {product.piecesPerBox}</Text>
         <Text fontSize="sm"><strong>Categoría:</strong> {product.category}</Text>
+        {userRole === 'super_administrador' && (
+          <Text fontSize="sm"><strong>Costo:</strong> ${product.cost.toFixed(2)}</Text>
+        )}
         <Text fontSize="sm"><strong>Precios:</strong></Text>
         <Text fontSize="xs">Menudeo: ${product.price1.toFixed(2)} | Min: {product.price1MinQty}</Text>
         <Text fontSize="xs">Mayoreo: ${product.price2.toFixed(2)} | Min: {product.price2MinQty}</Text>
