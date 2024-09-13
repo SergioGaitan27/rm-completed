@@ -17,6 +17,7 @@ import {
   CardBody,
   Stack,
   useToast,
+  Badge,
 } from "@chakra-ui/react";
 
 import { IPedidoNumber } from '@/app/types/product';
@@ -84,6 +85,12 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
                 <Text><strong>Fecha:</strong> {new Date(pedido.date).toLocaleString()}</Text>
                 <Text><strong>Total de Productos:</strong> {pedido.pedidos.length}</Text>
                 <Text><strong>Total de Unidades:</strong> {pedido.pedidos.reduce((acc, t) => acc + t.quantity, 0)}</Text>
+                <Flex alignItems="center">
+                  <Text mr={2}><strong>Estado:</strong></Text>
+                  <Badge colorScheme={pedido.isSurtido ? "green" : "yellow"}>
+                    {pedido.isSurtido ? "Surtido" : "Pendiente"}
+                  </Badge>
+                </Flex>
               </Stack>
             </CardBody>
           </Card>

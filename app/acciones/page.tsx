@@ -306,13 +306,24 @@ const SalesPage: React.FC = () => {
     return 0;
   }, [session]);
 
+  const getCartQuantity = (productId: string): number => {
+    return cart.reduce((total, item) => {
+      if (item._id === productId) {
+        return total + (item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity);
+      }
+      return total;
+    }, 0);
+  };
+
   const handleAddToCart = () => {
     if (selectedProduct) {
       const remainingQuantity = getRemainingQuantity(selectedProduct);
       const quantityToAdd = unitType === 'boxes' ? quantity * selectedProduct.piecesPerBox : quantity;
+      const currentCartQuantity = getCartQuantity(selectedProduct._id);
+      const totalQuantityAfterAdding = currentCartQuantity + quantityToAdd;
   
-      if (quantityToAdd > remainingQuantity) {
-        toast.error(`No hay suficiente inventario. Cantidad disponible: ${remainingQuantity} piezas.`);
+      if (totalQuantityAfterAdding > remainingQuantity) {
+        toast.error(`No hay suficiente inventario. Cantidad disponible: ${remainingQuantity - currentCartQuantity} piezas.`);
         return;
       }
   
@@ -353,7 +364,7 @@ const SalesPage: React.FC = () => {
       setQuantity(1);
       setUnitType('pieces');
       toast.success('Producto añadido al carrito');
-
+  
       if (searchInputRef.current) {
         searchInputRef.current.focus();
       }

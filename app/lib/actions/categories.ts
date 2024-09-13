@@ -28,8 +28,8 @@ export const roleCategories: Record<UserRole, Category[]> = {
   ],
   vendedor: [
 
-    { id: 1, name: "Acciones", description: "Ventas, pedidos y transferencias.", link: "/acciones" },
-    { id: 2, name: "Productos", description: "Agregar, modificar, eliminar e inventario.", link: "/productos" },
+    { id: 1, name: "Acciones", description: "Ventas y pedidos", link: "/acciones" },
+    { id: 2, name: "Productos", description: "Consulta existencia y ubicaciones.", link: "/productos" },
   ],
   cliente: [
     { id: 1, name: "Productos", description: "Agregar, modificar, eliminar e inventario.", link: "/productos" },

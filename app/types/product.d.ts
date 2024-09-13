@@ -110,4 +110,5 @@ export interface IPedidoNumber {
   pedidos: IPedidoItem[];
   evidenceImageUrl: string;
   date: string;
+  isSurtido: boolean;
 }
