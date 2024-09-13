@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   Box,
   Container,
@@ -18,11 +19,11 @@ import {
   Stack,
   useToast,
   Badge,
+  Input,
 } from "@chakra-ui/react";
 
 import { IPedidoNumber, IPedidoItem } from '@/app/types/product';
 
-// Función de utilidad para calcular cajas y piezas
 const calculateBoxesAndPieces = (quantity: number, piecesPerBox: number): string => {
   if (piecesPerBox <= 1) return `${quantity} piezas`;
   
@@ -41,6 +42,8 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
   const toast = useToast();
   const [pedido, setPedido] = useState<IPedidoNumber | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [evidenceImage, setEvidenceImage] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const fetchPedidoDetails = useCallback(async () => {
     try {
@@ -72,6 +75,80 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
       router.push('/login');
     }
   }, [status, router, fetchPedidoDetails]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setEvidenceImage(e.target.files[0]);
+    }
+  };
+
+  const handleSurtirPedido = async () => {
+    if (!evidenceImage) {
+      toast({
+        title: "Error",
+        description: "Por favor, sube una imagen de evidencia antes de marcar como surtido.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Upload image to Cloudinary
+      const formData = new FormData();
+      formData.append('file', evidenceImage);
+      formData.append('upload_preset', 'xgmwzgac');
+
+      const imageResponse = await fetch('https://api.cloudinary.com/v1_1/dpsrtoyp7/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!imageResponse.ok) {
+        throw new Error('Error al subir la imagen de evidencia');
+      }
+
+      const imageData = await imageResponse.json();
+      const imageUrl = imageData.secure_url;
+
+      // Update pedido status and add evidence image URL
+      const response = await fetch(`/api/pedidos/${params.pedidoNumber}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isSurtido: true, evidenceImageUrl: imageUrl }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar el pedido');
+      }
+
+      toast({
+        title: "Pedido actualizado",
+        description: "El pedido ha sido marcado como surtido y se ha subido la imagen de evidencia.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+
+      fetchPedidoDetails(); // Reload pedido details
+    } catch (error) {
+      console.error('Error al marcar el pedido como surtido:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo marcar el pedido como surtido o subir la imagen",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (status === 'loading' || isLoading) {
     return (
@@ -131,6 +208,56 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
               </VStack>
             </CardBody>
           </Card>
+
+          {!pedido.isSurtido && (
+            <Card>
+              <CardBody>
+                <Heading as="h2" size="lg" mb={4}>Marcar como Surtido</Heading>
+                <VStack spacing={4} align="stretch">
+                  <Text>Sube una imagen como evidencia antes de marcar el pedido como surtido:</Text>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    mb={4}
+                  />
+                  {evidenceImage && (
+                    <Image
+                      src={URL.createObjectURL(evidenceImage)}
+                      alt="Vista previa de la evidencia"
+                      width={300}
+                      height={200}
+                      objectFit="contain"
+                    />
+                  )}
+                  <Button
+                    onClick={handleSurtirPedido}
+                    colorScheme="green"
+                    isLoading={isUploading}
+                    loadingText="Subiendo..."
+                    isDisabled={!evidenceImage}
+                  >
+                    Marcar como Surtido y Subir Evidencia
+                  </Button>
+                </VStack>
+              </CardBody>
+            </Card>
+          )}
+
+          {pedido.evidenceImageUrl && (
+            <Card>
+              <CardBody>
+                <Heading as="h2" size="lg" mb={4}>Evidencia</Heading>
+                <Image
+                  src={pedido.evidenceImageUrl}
+                  alt="Evidencia del pedido surtido"
+                  width={300}
+                  height={200}
+                  objectFit="contain"
+                />
+              </CardBody>
+            </Card>
+          )}
 
           <Button 
             onClick={() => router.back()} 

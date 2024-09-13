@@ -117,55 +117,6 @@ const HistorialPedidosPage: React.FC = () => {
     filterPedidos();
   }, [filterPedidos]);
 
-  const canMarkAsSurtido = useCallback(() => {
-    const userRole = session?.user?.role;
-    return userRole === 'super_administrador' || userRole === 'sistemas';
-  }, [session]);
-
-  const handleSurtirPedido = async (pedidoId: string) => {
-    if (!canMarkAsSurtido()) {
-      toast({
-        title: "Acceso denegado",
-        description: "No tienes permisos para realizar esta acción",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/pedidos/${pedidoId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ isSurtido: true }),
-      });
-
-      if (!response.ok) throw new Error('Error al actualizar el pedido');
-
-      toast({
-        title: "Pedido actualizado",
-        description: "El pedido ha sido marcado como surtido",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-
-      fetchPedidos(); // Recargar los pedidos
-    } catch (error) {
-      console.error('Error al marcar el pedido como surtido:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo marcar el pedido como surtido",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
   if (status === 'loading' || isLoading) {
     return (
       <Flex minH="100vh" alignItems="center" justifyContent="center">
@@ -258,14 +209,6 @@ const HistorialPedidosPage: React.FC = () => {
                               Ver detalles
                             </Button>
                           </Link>
-                          {!pedido.isSurtido && canMarkAsSurtido() && (
-                            <Button 
-                              colorScheme="green" 
-                              onClick={() => handleSurtirPedido(pedido._id)}
-                            >
-                              Marcar como surtido
-                            </Button>
-                          )}
                         </Flex>
                       </Stack>
                     </CardBody>

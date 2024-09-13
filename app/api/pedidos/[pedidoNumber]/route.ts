@@ -51,11 +51,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { pedidoNumb
   try {
     await connectDB();
 
-    const { isSurtido } = await req.json();
+    const { isSurtido, evidenceImageUrl } = await req.json();
 
     const updatedPedido = await Pedido.findByIdAndUpdate(
       params.pedidoNumber,
-      { $set: { isSurtido } },
+      { $set: { isSurtido, evidenceImageUrl } },
       { new: true, runValidators: true }
     );
 
