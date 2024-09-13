@@ -49,12 +49,9 @@ const calculateProductTotals = (items: CartItem[]): {
   });
 
   const totalPieces = boxes * items[0].piecesPerBox + loosePieces;
-  
-  // Convertir piezas sueltas a cajas si es posible
   const additionalBoxes = Math.floor(loosePieces / items[0].piecesPerBox);
   boxes += additionalBoxes;
   loosePieces = loosePieces % items[0].piecesPerBox;
-
   return { boxes, loosePieces, totalPieces };
 };
 
@@ -63,7 +60,6 @@ const SalesPage: React.FC = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
-  const [userLocation, setUserLocation] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [unitType, setUnitType] = useState<'pieces' | 'boxes'>('pieces');
@@ -101,13 +97,15 @@ const SalesPage: React.FC = () => {
   }, [cart]);
   const [isPriceAdjustmentModalOpen, setIsPriceAdjustmentModalOpen] = useState(false);
   const [cartUpdateTrigger, setCartUpdateTrigger] = useState(0);
-
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isProductsLoaded, setIsProductsLoaded] = useState(false);
+  
 
   const fetchBusinessInfo = useCallback(async () => {
-    if (!userLocation) return;
+    if (!session || !session.user?.location) return;
     
     try {
-      const response = await fetch(`/api/business?location=${encodeURIComponent(userLocation)}`);
+      const response = await fetch(`/api/business?location=${encodeURIComponent(session.user.location)}`);
       if (!response.ok) {
         throw new Error('Error al obtener la información del negocio');
       }
@@ -116,31 +114,19 @@ const SalesPage: React.FC = () => {
     } catch (error) {
       console.error('Error al obtener la información del negocio:', error);
     }
-  }, [userLocation]);
+}, [session]);
 
   useEffect(() => {
     fetchBusinessInfo();
   }, [fetchBusinessInfo]);
 
   useEffect(() => {
-    // El plugin siempre estará disponible ahora que es un módulo TypeScript
     setPluginConnected(true);
   }, []);
 
-  const fetchUserLocation = useCallback(async () => {
-    try {
-      const response = await fetch('/api/user/location');
-      if (!response.ok) {
-        throw new Error('Error al obtener la ubicación del usuario');
-      }
-      const data = await response.json();
-      setUserLocation(data.location);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  }, []);
 
   const fetchProducts = useCallback(async () => {
+    if (isProductsLoaded && !isInitialLoad) return;
     setIsUpdating(true);
     try {
       const response = await fetch('/api/products');
@@ -149,37 +135,42 @@ const SalesPage: React.FC = () => {
       }
       const data = await response.json();
       setProducts(data);
-      toast.success('Productos actualizados correctamente');
+      setIsProductsLoaded(true);
+      if (isInitialLoad) {
+        setIsInitialLoad(false);
+        toast.success('Productos cargados correctamente');
+      } else {
+        toast.success('Productos actualizados correctamente');
+      }
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Error al actualizar productos');
+      toast.error('Error al cargar/actualizar productos');
     } finally {
       setIsUpdating(false);
     }
-  }, []);
+  }, [isInitialLoad, isProductsLoaded]);
 
   useEffect(() => {
-    if (status === 'authenticated' && session?.user) {
-      fetchUserLocation();
+    if (status === 'authenticated' && session?.user && isInitialLoad) {
       fetchProducts();
     } else if (status === 'unauthenticated') {
       router.push('/login');
     }
-  }, [status, router, session, fetchUserLocation, fetchProducts]);
+  }, [status, router, session, fetchProducts, isInitialLoad]);
 
   const applyPriceToCart = (priceType: 'regular' | 'mayoreo' | 'caja') => {
     const updatedCart = cart.map(item => {
       let newPrice;
       switch (priceType) {
         case 'mayoreo':
-          newPrice = item.price2; // Precio de mayoreo
+          newPrice = item.price2;
           break;
         case 'caja':
-          newPrice = item.price3; // Precio de caja
+          newPrice = item.price3;
           break;
         case 'regular':
         default:
-          newPrice = item.price1; // Precio regular (menudeo)
+          newPrice = item.price1;
           break;
       }
       return {
@@ -194,7 +185,6 @@ const SalesPage: React.FC = () => {
 
   const handleSearchTop = () => {
     const searchTerm = searchTermTop.trim().toUpperCase();
-    
     switch (searchTerm) {
       case 'ACTUALIZAR':
         fetchProducts();
@@ -227,7 +217,6 @@ const SalesPage: React.FC = () => {
         if (result) {
           setSelectedProduct(result);
           setProductInfoBottom(result);
-      
           if (result.boxCode.toLowerCase() === searchTerm.toLowerCase()) {
             setUnitType('boxes');
           } else if (result.productCode.toLowerCase() === searchTerm.toLowerCase()) {
@@ -239,19 +228,17 @@ const SalesPage: React.FC = () => {
           setProductSearchedFromBottom(false);
         }
     }
-  
     setSearchTermTop('');
   };
-
   
   const handleApplyPriceAdjustment = (adjustedCart: AdjustedCartItem[]) => {
     const updatedCart: CartItem[] = adjustedCart.map(item => ({
       ...item,
-      appliedPrice: item.adjustedPrice ?? item.appliedPrice // Usa el precio ajustado si existe, si no, mantén el precio aplicado original
+      appliedPrice: item.adjustedPrice ?? item.appliedPrice
     }));
     setCart(updatedCart);
     localStorage.setItem('cart', JSON.stringify(updatedCart));
-    setCartUpdateTrigger(prev => prev + 1); // Forzar re-renderización
+    setCartUpdateTrigger(prev => prev + 1);
     toast.success('Precios ajustados correctamente');
   };
 
@@ -296,10 +283,28 @@ const SalesPage: React.FC = () => {
     return product.price1;
   };
 
-  const getRemainingQuantity = (product: Product): number => {
-    const locationStock = product.stockLocations.find(location => location.location === userLocation);
-    return locationStock ? Number(locationStock.quantity) : 0;
-  };
+  const getRemainingQuantity = useCallback((product: Product): number => {
+    if (!session || !session.user?.location) {
+      console.warn('No se pudo obtener la ubicación del usuario para verificar el stock');
+      return 0;
+    }
+  
+    if (!product.stockLocations) {
+      console.warn(`El producto ${product.name} no tiene información de stock`);
+      return 0;
+    }
+  
+    const locationStock = product.stockLocations.find(
+      location => location.location === session.user.location
+    );
+  
+    if (locationStock) {
+      const quantity = Number(locationStock.quantity);
+      return isNaN(quantity) ? 0 : quantity;
+    }
+  
+    return 0;
+  }, [session]);
 
   const handleAddToCart = () => {
     if (selectedProduct) {
@@ -312,18 +317,10 @@ const SalesPage: React.FC = () => {
       }
   
       const updatedCart = [...cart];
-      
-      // Encontrar todos los items del mismo producto en el carrito
       const existingItems = updatedCart.filter(item => item._id === selectedProduct._id);
-      
-      // Calcular la cantidad total de este producto en el carrito
       const totalQuantityInCart = existingItems.reduce((total, item) => 
         total + (item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity), 0);
-  
-      // Añadir la nueva cantidad
       const newTotalQuantity = totalQuantityInCart + quantityToAdd;
-  
-      // Calcular el nuevo precio basado en la cantidad total
       const newAppliedPrice = calculatePrice(selectedProduct, newTotalQuantity);
   
       const existingItemIndex = updatedCart.findIndex(
@@ -331,14 +328,12 @@ const SalesPage: React.FC = () => {
       );
   
       if (existingItemIndex !== -1) {
-        // Actualizar item existente
         updatedCart[existingItemIndex] = {
           ...updatedCart[existingItemIndex],
           quantity: updatedCart[existingItemIndex].quantity + quantity,
           appliedPrice: newAppliedPrice
         };
       } else {
-        // Añadir nuevo item
         updatedCart.push({
           ...selectedProduct,
           quantity,
@@ -346,8 +341,6 @@ const SalesPage: React.FC = () => {
           appliedPrice: newAppliedPrice
         });
       }
-  
-      // Actualizar precios para todos los items del mismo producto
       updatedCart.forEach(item => {
         if (item._id === selectedProduct._id) {
           item.appliedPrice = newAppliedPrice;
@@ -468,8 +461,6 @@ const SalesPage: React.FC = () => {
       const conector = new ConectorPluginV3(undefined, 'YmEwNzRiYWFfXzIwMjQtMDctMTBfXzIwMjQtMTAtMDgjIyMxUXJaS2xpWjVjbU01VEVmckg5Zm93RWxWOHVmQmhYNjVFQnE1akVFMzBZWG51QUs5YUd0U3Ayc2d0N2E0a1ZiOExEMm1EV2NnTjJhTWR0dDhObUw2bFBLTERGYjBXYkFpTTBBNjJTYlo5KzBLRUVLMzlFeEVLcVR5d2dEcWdsQzUvWlhxZCtxUC9aQ1RnL2M5UVhKRUxJRXVYOGVRU0dxZlg4UFF1MkFiY3doME5mdUdYaitHVk1LMzRvcmRDN0FEeTg4ZStURmlQRktrRW9UcnBMSisrYkJQTC8wZ1ZZdFIxdTNGV3dYQWR0Ylg3U25paU5qZ0I5QmNTQlZRRmp5NWRGYUVyODFnak1UR2VPWHB6T2xMZUhWWmJFVUJCQkhEOENyUGJ4NlNQYXBxOHA1NVlCNS9IZkJ0VWpsSDdMa1JocGlBSWF6Z2hVdzRPMFZ6aVZ6enpVbHNnR091VElWdTdaODRvUDlvWjg5bGI5djIxbTcwSDB4L1ZqSXlGNU52b2JTemoyNXMzL3NxS2I1SEtYVHduVW5tTXBvcWxGZmwwajZXM1ZFQnhkdjh2Y2VRMWtaSWkyY1ZWbjNUK29tTkJLWFRkR0NQSS9UaWgyaWNWdFlQZ05IbENxUXBBK0c3ZHFBUTd4VEh6TEJuT2dMemU2THZuRkpRajBpZkt0dlNHNDNzVU82bmRUaS8zbHpta1orK2lIWmVZR3pIampKWnV5RFRRbEo2MUpOamVYUWpHMTliREFaNFZ3SDhJanBWOEUyRERBLzVDcEYwL1l5MTByTTdlT0t0K1JaTWFlc3pHbkRpeXoydHpRK0Z4ZjNrdFV3U1ZFbCtCcFQ2Y1NLSzVNaFFjWDJjMmlrcWpCbVZSNDBzSVhKMjV1VXB1Nko0L1liMzgzNE1iWT0=');
   
       await conector.Iniciar();
-  
-      // Ajustar el ancho de impresión según el tamaño del papel
       let anchoCaracteres;
       switch (printerConfig.paperSize) {
         case '58mm':
@@ -482,11 +473,9 @@ const SalesPage: React.FC = () => {
           anchoCaracteres = 64;
           break;
         default:
-          anchoCaracteres = 48; // valor por defecto
+          anchoCaracteres = 48;
           console.warn(`Tamaño de papel desconocido: ${printerConfig.paperSize}. Usando ancho por defecto.`);
       }
-
-      // Imprimir información del negocio
       if (businessInfo) {
         conector.EstablecerEnfatizado(true);
         conector.EstablecerTamañoFuente(1, 1);
@@ -509,7 +498,6 @@ const SalesPage: React.FC = () => {
         }
         conector.EstablecerEnfatizado(false);
         conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-        // Modificación: Mostrar solo piezas totales para cada producto
         cart.forEach(item => {
           const totalPieces = item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity;
           conector.EscribirTexto(`${item.name}\n`);
@@ -524,19 +512,9 @@ const SalesPage: React.FC = () => {
           conector.EscribirTexto(`Cambio: $${change.toFixed(2)}\n`);
         }
 
-        conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
-        const qrUrl = `https://www.rmazh.com.mx/consultarTicketID?id=${ticketId}`;
-        conector.ImprimirCodigoQr(qrUrl, anchoCaracteres * 8, ConectorPluginV3.RECUPERACION_QR_MEJOR, ConectorPluginV3.TAMAÑO_IMAGEN_NORMAL);
-        
-    // Centrar el texto debajo del QR
-    conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
-    conector.EscribirTexto("\nEscanea el código QR para más detalles\n");
-    conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
-
     conector.Corte(1);
       
       const resultado = await conector.imprimirEn(printerConfig.printerName);
-
       if (typeof resultado === 'object' && resultado !== null && 'error' in resultado) {
         throw new Error(resultado.error);
       } else if (resultado !== true) {
@@ -589,7 +567,6 @@ const SalesPage: React.FC = () => {
     } else {
       setAmountPaid('');
       setChange(0); 
-      // Enfocamos el input cuando cambiamos a efectivo
       setTimeout(() => {
         amountPaidInputRef.current?.focus();
       }, 0);
@@ -605,25 +582,15 @@ const SalesPage: React.FC = () => {
     setChange(paid - total);
   };
 
-  const getChangeText = () => {
-    if (amountPaid === '') return '';
-    if (change === 0) return "Monto exacto";
-    if (change > 0) return `Cambio: $${change.toFixed(2)}`;
-    return `Falta: $${Math.abs(change).toFixed(2)}`;
-  };
-
-  const getChangeTextColor = () => {
-    if (amountPaid === '') return '';
-    if (change === 0) return "text-green-500";
-    if (change > 0) return "text-blue-500";
-    return "text-red-500";
-  };
-
   const isProductAvailable = (product: Product): boolean => {
     return product.availability && getRemainingQuantity(product) > 0;
   };
 
   const handlePayment = async () => {
+    if (!session || !session.user?.location) {
+      toast.error('No se pudo obtener la ubicación del usuario');
+      return;
+  }
     setIsLoading(true);
 
     const ticketData = {
@@ -639,7 +606,7 @@ const SalesPage: React.FC = () => {
     paymentType,
     amountPaid: parseFloat(amountPaid),
     change,
-    location: userLocation // Asegúrate de que userLocation esté definido y sea correcto
+    location: session.user?.location
   };
 
   try {
@@ -657,7 +624,6 @@ const SalesPage: React.FC = () => {
 
     const data = await response.json();
     
-    // Actualizar los productos en el estado local
     setProducts(prevProducts => {
       const updatedProducts = [...prevProducts];
       data.updatedProducts.forEach((updatedProduct: Product) => {
@@ -669,17 +635,10 @@ const SalesPage: React.FC = () => {
       return updatedProducts;
     });
 
-    // Imprimir el ticket con el ticketId si está disponible
     await printTicket(data.ticket?.ticketId);
-  
-      // Limpiar el carrito y cerrar el modal de pago
       handleClosePaymentModal();
       setCart([]);
-      
-      // Mostrar mensaje de éxito
       toast.success('Pago procesado e impreso exitosamente');
-  
-      // Limpiar la información del producto seleccionado
       setProductInfoBottom(null);
       setSearchTermBottom('');
       if (searchInputRef.current) {
@@ -694,7 +653,6 @@ const SalesPage: React.FC = () => {
   };
 
   const handleCorte = async () => {
-    // Validación de los valores ingresados
     const cashAmount = parseFloat(cashAmountCorte);
     const cardAmount = parseFloat(cardAmountCorte);
 
@@ -702,8 +660,6 @@ const SalesPage: React.FC = () => {
       toast.error('Por favor, ingrese montos válidos para efectivo y tarjeta.');
       return;
     }
-
-    // Mostrar confirmación antes de proceder
     setShowCorteConfirmation(true);
   };
 
@@ -726,7 +682,7 @@ const SalesPage: React.FC = () => {
       conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
   
       conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
-      conector.EscribirTexto(`Ubicación: ${userLocation}\n\n`);
+      conector.EscribirTexto(`Ubicación: ${session?.user?.location || ''}\n\n`);
   
       conector.EscribirTexto("Efectivo:\n");
       conector.EscribirTexto(`  Esperado: $${corteData.expectedCash.toFixed(2)}\n`);
@@ -771,7 +727,7 @@ const SalesPage: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          location: userLocation,
+          location: session?.user?.location || '',
           actualCash: parseFloat(cashAmountCorte),
           actualCard: parseFloat(cardAmountCorte)
         }),
@@ -785,8 +741,6 @@ const SalesPage: React.FC = () => {
       setCorteResults(data.data);
       await printCorteTicket(data.data);
       toast.success('Corte realizado exitosamente');
-
-      // No cerramos el modal inmediatamente para mostrar los resultados
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al realizar el corte');
@@ -844,10 +798,10 @@ const SalesPage: React.FC = () => {
                 onQuantityChange={handleQuantityChange}
                 onUnitTypeChange={(value: 'pieces' | 'boxes') => {
                   setUnitType(value);
-                  setQuantity(1); // Reset quantity when changing unit type
+                  setQuantity(1);
                 }}
                 onAddToCart={handleAddToCart}
-                isAvailable={getRemainingQuantity(selectedProduct) > 0}
+                remainingQuantity={getRemainingQuantity(selectedProduct)}
                 maxQuantity={unitType === 'boxes' 
                   ? Math.floor(getRemainingQuantity(selectedProduct) / selectedProduct.piecesPerBox)
                   : getRemainingQuantity(selectedProduct)}

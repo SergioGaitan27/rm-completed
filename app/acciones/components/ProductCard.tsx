@@ -23,7 +23,7 @@ interface ProductCardProps {
   onQuantityChange: (quantity: number) => void;
   onUnitTypeChange: (unitType: 'pieces' | 'boxes') => void;
   onAddToCart: () => void;
-  isAvailable: boolean;
+  remainingQuantity: number;
   maxQuantity: number;
 }
 
@@ -34,15 +34,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onQuantityChange, 
   onUnitTypeChange, 
   onAddToCart,
-  isAvailable,
+  remainingQuantity,
   maxQuantity 
 }) => {
+  const isAvailable = product.availability && remainingQuantity > 0;
   const handleInputClick = (e: React.MouseEvent<HTMLInputElement>) => {
     e.currentTarget.select();
   };
 
   const handleQuantityChange = (newQuantity: number) => {
-    // Asegurarse de que la nueva cantidad no exceda maxQuantity
     const clampedQuantity = Math.min(Math.max(1, newQuantity), maxQuantity);
     onQuantityChange(clampedQuantity);
   };
@@ -77,7 +77,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <div className="flex items-center justify-center space-x-2 pb-4">
             <Button 
               onClick={() => handleQuantityChange(quantity - 1)}
-              disabled={quantity <= 1}
+              disabled={quantity <= 1 || !isAvailable}
               size="sm"
               variant="outline"
               aria-label="Disminuir cantidad"
@@ -93,10 +93,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
               onClick={handleInputClick}
               className="w-16 text-center no-spinners"
               aria-label="Cantidad"
+              disabled={!isAvailable}
             />
             <Button 
               onClick={() => handleQuantityChange(quantity + 1)}
-              disabled={quantity >= maxQuantity}
+              disabled={quantity >= maxQuantity || !isAvailable}
               size="sm"
               variant="outline"
               aria-label="Aumentar cantidad"
@@ -109,14 +110,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
             value={unitType} 
             onValueChange={onUnitTypeChange} 
             className="flex justify-center space-x-4"
+            disabled={!isAvailable}
           >
             <div className="flex items-center">
-              <RadioGroupItem value="pieces" id="pieces" />
-              <Label htmlFor="pieces" className="ml-2">Piezas</Label>
+              <RadioGroupItem value="pieces" id="pieces" disabled={!isAvailable} />
+              <Label htmlFor="pieces" className={`ml-2 ${!isAvailable ? 'text-gray-400' : ''}`}>Piezas</Label>
             </div>
             <div className="flex items-center">
-              <RadioGroupItem value="boxes" id="boxes" />
-              <Label htmlFor="boxes" className="ml-2">Cajas</Label>
+              <RadioGroupItem value="boxes" id="boxes" disabled={!isAvailable} />
+              <Label htmlFor="boxes" className={`ml-2 ${!isAvailable ? 'text-gray-400' : ''}`}>Cajas</Label>
             </div>
           </RadioGroup>
         </div>
@@ -126,7 +128,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <Button 
             onClick={onAddToCart}
             className="w-full"
-            disabled={!isAvailable || quantity === 0}
+            disabled={!isAvailable}
           >
             {isAvailable ? 'Agregar' : 'No disponible'}
           </Button>
