@@ -117,7 +117,23 @@ const HistorialPedidosPage: React.FC = () => {
     filterPedidos();
   }, [filterPedidos]);
 
+  const canMarkAsSurtido = useCallback(() => {
+    const userRole = session?.user?.role;
+    return userRole === 'super_administrador' || userRole === 'sistemas';
+  }, [session]);
+
   const handleSurtirPedido = async (pedidoId: string) => {
+    if (!canMarkAsSurtido()) {
+      toast({
+        title: "Acceso denegado",
+        description: "No tienes permisos para realizar esta acción",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     try {
       const response = await fetch(`/api/pedidos/${pedidoId}`, {
         method: 'PATCH',
@@ -242,7 +258,7 @@ const HistorialPedidosPage: React.FC = () => {
                               Ver detalles
                             </Button>
                           </Link>
-                          {!pedido.isSurtido && (
+                          {!pedido.isSurtido && canMarkAsSurtido() && (
                             <Button 
                               colorScheme="green" 
                               onClick={() => handleSurtirPedido(pedido._id)}
