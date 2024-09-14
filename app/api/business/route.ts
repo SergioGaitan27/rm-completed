@@ -1,3 +1,4 @@
+// app/api/business/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getBusinessInfo, createBusinessInfo } from '@/app/lib/actions/business';
 

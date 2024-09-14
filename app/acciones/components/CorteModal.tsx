@@ -63,8 +63,10 @@ const CorteModal: React.FC<CorteModalProps> = ({
             <h3 className="font-bold">Resultados del Corte:</h3>
             <p>Efectivo Esperado: ${corteResults.expectedCash.toFixed(2)}</p>
             <p>Efectivo Real: ${corteResults.actualCash.toFixed(2)}</p>
+            <p>Diferencia Efectivo: ${(corteResults.actualCash - corteResults.expectedCash).toFixed(2)}</p>
             <p>Tarjeta Esperada: ${corteResults.expectedCard.toFixed(2)}</p>
             <p>Tarjeta Real: ${corteResults.actualCard.toFixed(2)}</p>
+            <p>Diferencia Tarjeta: ${(corteResults.actualCard - corteResults.expectedCard).toFixed(2)}</p>
             <p>Total de Tickets: {corteResults.totalTickets}</p>
           </div>
         )}

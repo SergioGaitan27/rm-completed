@@ -12,27 +12,33 @@ export async function realizarCorte(data: { location: string; actualCash: number
 
     const now = new Date();
     const corteDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endDate = new Date(corteDate);
-    endDate.setDate(endDate.getDate() + 1);
 
-    const tickets = await Ticket.find({
-      location,
-      date: {
-        $gte: corteDate,
-        $lt: endDate
+    const result = await Ticket.aggregate([
+      {
+        $match: {
+          location,
+          date: { $gte: corteDate, $lt: now }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          expectedCash: {
+            $sum: {
+              $cond: [{ $eq: ["$paymentType", "cash"] }, "$totalAmount", 0]
+            }
+          },
+          expectedCard: {
+            $sum: {
+              $cond: [{ $eq: ["$paymentType", "card"] }, "$totalAmount", 0]
+            }
+          },
+          totalTickets: { $sum: 1 }
+        }
       }
-    });
+    ]);
 
-    let expectedCash = 0;
-    let expectedCard = 0;
-
-    tickets.forEach(ticket => {
-      if (ticket.paymentType === 'cash') {
-        expectedCash += ticket.totalAmount;
-      } else if (ticket.paymentType === 'card') {
-        expectedCard += ticket.totalAmount;
-      }
-    });
+    const { expectedCash, expectedCard, totalTickets } = result[0] || { expectedCash: 0, expectedCard: 0, totalTickets: 0 };
 
     const newCorte = new Corte({
       location,
@@ -41,7 +47,7 @@ export async function realizarCorte(data: { location: string; actualCash: number
       expectedCard,
       actualCash,
       actualCard,
-      totalTickets: tickets.length
+      totalTickets
     });
     await newCorte.save();
 
@@ -52,7 +58,7 @@ export async function realizarCorte(data: { location: string; actualCash: number
         expectedCard,
         actualCash,
         actualCard,
-        totalTickets: tickets.length,
+        totalTickets,
         corteId: newCorte._id
       }
     });
