@@ -87,6 +87,21 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const target = e.currentTarget as HTMLInputElement | HTMLSelectElement;
+      const form = target.form;
+      if (form) {
+        const index = Array.prototype.indexOf.call(form, target);
+        const nextElement = form.elements[index + 1] as HTMLElement;
+        if (nextElement) {
+          nextElement.focus();
+        }
+      }
+    }
+  };
+
   return (
     <Box>
       <Button
@@ -152,6 +167,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                   name="boxCode"
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUppercaseChange(e, handleChange)}
                   onBlur={handleBlur}
+                  onKeyDown={handleKeyDown}
                 />
               </FormControl>
 
@@ -162,6 +178,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                   name="productCode"
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUppercaseChange(e, handleChange)}
                   onBlur={handleBlur}
+                  onKeyDown={handleKeyDown}
                 />
               </FormControl>
 
@@ -172,6 +189,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                   name="name"
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUppercaseChange(e, handleChange)}
                   onBlur={handleBlur}
+                  onKeyDown={handleKeyDown}
                 />
               </FormControl>
 
@@ -184,6 +202,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                   <NumberInputField
                     onChange={handleChange}
                     onBlur={handleBlur}
+                    onKeyDown={handleKeyDown}
                   />
                 </Field>
               </FormControl>
@@ -197,6 +216,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                   <NumberInputField
                     onChange={handleChange}
                     onBlur={handleBlur}
+                    onKeyDown={handleKeyDown}
                   />
                 </Field>
               </FormControl>
@@ -214,6 +234,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                           <NumberInputField
                             onChange={handleChange}
                             onBlur={handleBlur}
+                            onKeyDown={handleKeyDown}
                           />
                         </Field>
                       </FormControl>
@@ -228,6 +249,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                           <NumberInputField
                             onChange={handleChange}
                             onBlur={handleBlur}
+                            onKeyDown={handleKeyDown}
                           />
                         </Field>
                       </FormControl>
@@ -243,6 +265,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                   name="category"
                   onChange={handleChange}
                   onBlur={handleBlur}
+                  onKeyDown={handleKeyDown}
                 >
                   <option value="SIN CATEGORÍA">SIN CATEGORÍA</option>
                   <option value="PAPELERÍA">PAPELERÍA</option>
@@ -316,6 +339,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                             name={`stockLocations.${index}.location`}
                             placeholder="Ubicación"
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUppercaseChange(e, handleChange)}
+                            onKeyDown={handleKeyDown}
                           />
                           <Input
                             name={`stockLocations.${index}.quantity`}
@@ -323,6 +347,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                             value={location.quantity}
                             onChange={(e) => handleStockQuantityChange(e, index, setFieldValue)}
                             onBlur={handleBlur}
+                            onKeyDown={handleKeyDown}
                           />
                           {index > 0 && (
                             <IconButton
