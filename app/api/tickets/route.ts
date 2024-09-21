@@ -2,6 +2,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { processTicket, getTicketById, getTicketsInRange } from '@/app/lib/actions/tickets';
+import moment from 'moment-timezone';
+
+const TIMEZONE = 'America/Mexico_City';
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,8 +45,8 @@ export async function GET(req: NextRequest) {
       }, { status: 200 });
     } else if (startDateParam && endDateParam) {
       // Obtener los tickets en un rango de fechas
-      const startDate = new Date(startDateParam);
-      const endDate = new Date(endDateParam);
+      const startDate = moment.tz(startDateParam, TIMEZONE).toDate();
+      const endDate = moment.tz(endDateParam, TIMEZONE).toDate();
       const tickets = await getTicketsInRange(startDate, endDate);
       return NextResponse.json({
         success: true,

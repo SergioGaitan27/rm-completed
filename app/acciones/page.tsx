@@ -12,6 +12,9 @@ import ProductInfo from '@/app/components/ProductInfo';
 import ConectorPluginV3 from '@/app/utils/ConectorPluginV3';
 import { Product, CartItem, IBusinessInfo, IStockLocation } from '@/app/types/product';
 import PriceAdjustmentModal from '@/app/components/PriceAdjustmentModal';
+import moment from 'moment-timezone';
+
+const TIMEZONE = 'America/Mexico_City';
 
 const PaymentModal = lazy(() => import('@/app/components/PaymentModal'));
 const CorteModal = lazy(() => import('@/app/components/CorteModal'));
@@ -99,8 +102,11 @@ const SalesPage: React.FC = () => {
   const [cartUpdateTrigger, setCartUpdateTrigger] = useState(0);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isProductsLoaded, setIsProductsLoaded] = useState(false);
-  
 
+  const formatDate = (date: Date) => {
+    return moment(date).tz(TIMEZONE).format('DD/MM/YYYY HH:mm:ss');
+  };
+  
   const fetchBusinessInfo = useCallback(async () => {
     if (!session || !session.user?.location) return;
     
@@ -503,7 +509,7 @@ const SalesPage: React.FC = () => {
 
         conector.EstablecerEnfatizado(true);
         conector.EstablecerTamañoFuente(1, 1);
-        conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
+        conector.EscribirTexto(`Fecha: ${formatDate(new Date())}\n`);
         if (ticketId) {
           conector.EscribirTexto(`ID: ${ticketId}\n`);
         }
@@ -617,7 +623,8 @@ const SalesPage: React.FC = () => {
     paymentType,
     amountPaid: parseFloat(amountPaid),
     change,
-    location: session.user?.location
+    location: session.user?.location,
+    date: moment().tz(TIMEZONE).toDate()
   };
 
   try {
@@ -692,7 +699,7 @@ const SalesPage: React.FC = () => {
       conector.EstablecerEnfatizado(false);
       conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
   
-      conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
+      conector.EscribirTexto(`Fecha: ${formatDate(new Date())}\n`);
       conector.EscribirTexto(`Ubicación: ${session?.user?.location || ''}\n\n`);
   
       conector.EscribirTexto("Efectivo:\n");
@@ -746,7 +753,8 @@ const SalesPage: React.FC = () => {
         body: JSON.stringify({
           location: session?.user?.location || '',
           actualCash: parseFloat(cashAmountCorte),
-          actualCard: parseFloat(cardAmountCorte)
+          actualCard: parseFloat(cardAmountCorte),
+          date: moment().tz(TIMEZONE).toISOString() 
         }),
       });
   
