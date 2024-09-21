@@ -12,9 +12,6 @@ import ProductInfo from '@/app/components/ProductInfo';
 import ConectorPluginV3 from '@/app/utils/ConectorPluginV3';
 import { Product, CartItem, IBusinessInfo, IStockLocation } from '@/app/types/product';
 import PriceAdjustmentModal from '@/app/components/PriceAdjustmentModal';
-import moment from 'moment-timezone';
-
-const TIMEZONE = 'America/Mexico_City';
 
 const PaymentModal = lazy(() => import('@/app/components/PaymentModal'));
 const CorteModal = lazy(() => import('@/app/components/CorteModal'));
@@ -102,11 +99,8 @@ const SalesPage: React.FC = () => {
   const [cartUpdateTrigger, setCartUpdateTrigger] = useState(0);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isProductsLoaded, setIsProductsLoaded] = useState(false);
-
-  const formatDate = (date: Date) => {
-    return moment(date).tz(TIMEZONE).format('DD/MM/YYYY HH:mm:ss');
-  };
   
+
   const fetchBusinessInfo = useCallback(async () => {
     if (!session || !session.user?.location) return;
     
@@ -509,7 +503,7 @@ const SalesPage: React.FC = () => {
 
         conector.EstablecerEnfatizado(true);
         conector.EstablecerTamañoFuente(1, 1);
-        conector.EscribirTexto(`Fecha: ${formatDate(new Date())}\n`);
+        conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
         if (ticketId) {
           conector.EscribirTexto(`ID: ${ticketId}\n`);
         }
@@ -623,8 +617,7 @@ const SalesPage: React.FC = () => {
     paymentType,
     amountPaid: parseFloat(amountPaid),
     change,
-    location: session.user?.location,
-    date: moment().tz(TIMEZONE).toDate()
+    location: session.user?.location
   };
 
   try {
@@ -699,7 +692,7 @@ const SalesPage: React.FC = () => {
       conector.EstablecerEnfatizado(false);
       conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
   
-      conector.EscribirTexto(`Fecha: ${formatDate(new Date())}\n`);
+      conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
       conector.EscribirTexto(`Ubicación: ${session?.user?.location || ''}\n\n`);
   
       conector.EscribirTexto("Efectivo:\n");
@@ -718,13 +711,7 @@ const SalesPage: React.FC = () => {
       conector.EscribirTexto(`  Esperado: $${(corteData.expectedCash + corteData.expectedCard).toFixed(2)}\n`);
       conector.EscribirTexto(`  Real: $${(corteData.actualCash + corteData.actualCard).toFixed(2)}\n`);
       conector.EscribirTexto(`  Diferencia: $${((corteData.actualCash + corteData.actualCard) - (corteData.expectedCash + corteData.expectedCard)).toFixed(2)}\n`);
-      if (corteData.tickets && corteData.tickets.length > 0) {
-        conector.EscribirTexto("Tickets Sumados:\n");
-        corteData.tickets.forEach((ticket: any) => {
-          conector.EscribirTexto(`ID: ${ticket.ticketId} - Total: $${ticket.totalAmount.toFixed(2)} - Pago: ${ticket.paymentType}\n`);
-        });
-      }
-      
+  
       conector.Corte(1);
   
       const resultado = await conector.imprimirEn(printerConfig.printerName);
@@ -753,18 +740,17 @@ const SalesPage: React.FC = () => {
         body: JSON.stringify({
           location: session?.user?.location || '',
           actualCash: parseFloat(cashAmountCorte),
-          actualCard: parseFloat(cardAmountCorte),
-          date: moment().tz(TIMEZONE).toISOString() 
+          actualCard: parseFloat(cardAmountCorte)
         }),
       });
-  
+
       if (!response.ok) {
         throw new Error('Error al realizar el corte');
       }
-  
+
       const data = await response.json();
-      setCorteResults(data.data); // Ahora data.data incluye los tickets
-      await printCorteTicket(data.data); // Pasamos los datos para imprimir
+      setCorteResults(data.data);
+      await printCorteTicket(data.data);
       toast.success('Corte realizado exitosamente');
     } catch (error) {
       console.error('Error:', error);
@@ -774,7 +760,6 @@ const SalesPage: React.FC = () => {
       setShowCorteConfirmation(false);
     }
   };
-  
 
   const closeCorteModal = () => {
     setIsCorteModalOpen(false);
