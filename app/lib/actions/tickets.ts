@@ -5,6 +5,7 @@ import Ticket, { ITicket } from '@/app/lib/models/Ticket';
 import Product, { IProduct, IStockLocation } from '@/app/lib/models/Producto';
 import mongoose from 'mongoose';
 import { pusherServer } from '@/app/utils/pusher';
+import moment from 'moment-timezone';
 
 // Interfaces
 interface SimpleTicketItem {
@@ -37,6 +38,8 @@ async function getNextSequenceNumber(location: string): Promise<number> {
   const lastTicket = await Ticket.findOne({ location }).sort('-sequenceNumber');
   return lastTicket ? lastTicket.sequenceNumber + 1 : 1;
 }
+
+const TIMEZONE = 'America/Mexico_City';
 
 // Función principal para procesar un ticket
 export async function processTicket(ticketData: TicketData) {
@@ -82,7 +85,8 @@ export async function processTicket(ticketData: TicketData) {
     totalProfit,
     paymentType,
     amountPaid,
-    change
+    change,
+    date: moment().tz(TIMEZONE).toDate()
   });
 
   if (pusherServer) {
@@ -142,11 +146,11 @@ export async function getTicketById(ticketId: string) {
 export async function getTicketsInRange(startDate: Date, endDate: Date) {
   await connectDB();
 
-  startDate.setUTCHours(0, 0, 0, 0); // Inicio del día en UTC
-  endDate.setUTCHours(23, 59, 59, 999); // Fin del día en UTC
+  const startOfDay = moment(startDate).tz(TIMEZONE).startOf('day').toDate();
+  const endOfDay = moment(endDate).tz(TIMEZONE).endOf('day').toDate();
 
   const query: any = {
-    date: { $gte: startDate, $lte: endDate },
+    date: { $gte: startOfDay, $lte: endOfDay },
   };
 
   const tickets = await Ticket.find(query).sort({ date: -1 });
