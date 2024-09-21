@@ -1,5 +1,4 @@
-// app/productos/modificar/[id]/ProductForm.tsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, KeyboardEvent } from 'react';
 import { Formik, Form, Field, FieldArray } from 'formik';
 import {
   VStack,
@@ -62,6 +61,21 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onBack }) 
     }
   };
 
+  const handleKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const target = e.currentTarget as HTMLInputElement | HTMLSelectElement;
+      const form = target.form;
+      if (form) {
+        const index = Array.prototype.indexOf.call(form, target);
+        const nextElement = form.elements[index + 1] as HTMLElement;
+        if (nextElement) {
+          nextElement.focus();
+        }
+      }
+    }
+  };
+
   return (
     <Box>
       <Button
@@ -119,6 +133,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onBack }) 
                   name="boxCode"
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUppercaseChange(e, handleChange)}
                   onBlur={handleBlur}
+                  onKeyDown={handleKeyDown}
                   value={values.boxCode}
                 />
               </FormControl>
@@ -130,6 +145,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onBack }) 
                   name="productCode"
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUppercaseChange(e, handleChange)}
                   onBlur={handleBlur}
+                  onKeyDown={handleKeyDown}
                   value={values.productCode}
                 />
               </FormControl>
@@ -141,6 +157,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onBack }) 
                   name="name"
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUppercaseChange(e, handleChange)}
                   onBlur={handleBlur}
+                  onKeyDown={handleKeyDown}
                   value={values.name}
                 />
               </FormControl>
@@ -154,6 +171,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onBack }) 
                   <NumberInputField
                     onChange={handleChange}
                     onBlur={handleBlur}
+                    onKeyDown={handleKeyDown}
                     value={values.piecesPerBox}
                   />
                 </Field>
@@ -168,6 +186,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onBack }) 
                   <NumberInputField
                     onChange={handleChange}
                     onBlur={handleBlur}
+                    onKeyDown={handleKeyDown}
                     value={values.cost}
                   />
                 </Field>
@@ -186,6 +205,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onBack }) 
                           <NumberInputField
                             onChange={handleChange}
                             onBlur={handleBlur}
+                            onKeyDown={handleKeyDown}
                             value={values[price as keyof IProduct]}
                           />
                         </Field>
@@ -201,6 +221,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onBack }) 
                           <NumberInputField
                             onChange={handleChange}
                             onBlur={handleBlur}
+                            onKeyDown={handleKeyDown}
                             value={values[`${price}MinQty` as keyof IProduct]}
                           />
                         </Field>
@@ -217,6 +238,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onBack }) 
                   name="category"
                   onChange={handleChange}
                   onBlur={handleBlur}
+                  onKeyDown={handleKeyDown}
                   value={values.category}
                 >
                   <option value="SIN CATEGORÍA">SIN CATEGORÍA</option>
@@ -291,6 +313,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onBack }) 
                             name={`stockLocations.${index}.location`}
                             placeholder="Ubicación"
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUppercaseChange(e, handleChange)}
+                            onKeyDown={handleKeyDown}
                           />
                           <Field
                             as={Input}
@@ -299,6 +322,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onBack }) 
                             placeholder="Cantidad"
                             onChange={handleChange}
                             onBlur={handleBlur}
+                            onKeyDown={handleKeyDown}
                             value={location.quantity}
                             min={0}
                           />

@@ -20,4 +20,6 @@ const CorteSchema: Schema = new Schema({
   totalTickets: { type: Number, required: true }
 });
 
+CorteSchema.index({ location: 1, date: 1 });
+
 export default mongoose.models.Corte || mongoose.model<ICorte>('Corte', CorteSchema);

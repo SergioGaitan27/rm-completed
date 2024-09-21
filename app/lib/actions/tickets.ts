@@ -136,12 +136,15 @@ export async function getTicketById(ticketId: string) {
     return ticket;
   }
 
-export async function getTicketStats(startDate: Date, endDate: Date) {
-  await connectDB();
-
-  const query: any = {
-    date: { $gte: startDate, $lte: endDate },
-  };
+  export async function getTicketStats(startDate: Date, endDate: Date) {
+    await connectDB();
+  
+    startDate.setUTCHours(0, 0, 0, 0); // Inicio del día en UTC
+    endDate.setUTCHours(23, 59, 59, 999); // Fin del día en UTC
+  
+    const query: any = {
+      date: { $gte: startDate, $lte: endDate },
+    };
 
   const tickets = await Ticket.find(query).sort({ date: -1 });
 

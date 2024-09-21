@@ -51,4 +51,6 @@ const TicketSchema: Schema = new Schema({
 // Índice compuesto para garantizar la unicidad de location + sequenceNumber
 TicketSchema.index({ location: 1, sequenceNumber: 1 }, { unique: true });
 
+TicketSchema.index({ location: 1, date: 1 });
+
 export default mongoose.models.Ticket || mongoose.model<ITicket>('Ticket', TicketSchema);

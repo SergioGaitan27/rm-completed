@@ -10,14 +10,18 @@ export async function realizarCorte(data: { location: string; actualCash: number
 
     const { location, actualCash, actualCard } = data;
 
-    const now = new Date();
-    const corteDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const nowUTC = new Date();
+    const corteDateUTC = new Date(Date.UTC(
+      nowUTC.getUTCFullYear(),
+      nowUTC.getUTCMonth(),
+      nowUTC.getUTCDate()
+    ));
 
     const result = await Ticket.aggregate([
       {
         $match: {
           location,
-          date: { $gte: corteDate, $lt: now }
+          date: { $gte: corteDateUTC, $lt: nowUTC }
         }
       },
       {
@@ -42,7 +46,7 @@ export async function realizarCorte(data: { location: string; actualCash: number
 
     const newCorte = new Corte({
       location,
-      date: corteDate,
+      date: corteDateUTC,
       expectedCash,
       expectedCard,
       actualCash,
