@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/acciones/components/ui/card";
-import { Input } from "@/app/acciones/components/ui/input";
-import { Button } from "@/app/acciones/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/acciones/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import { Input } from "@/app/components/ui/input";
+import { Button } from "@/app/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { toast } from 'react-hot-toast';
 
 interface BusinessInfo {

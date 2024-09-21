@@ -2,8 +2,8 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Button } from "@/app/acciones/components/ui/button";
-import { Input } from "@/app/acciones/components/ui/input";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
 import { Product, IStockLocation } from '@/app/types/product';
 
 interface ProductInfoProps {

@@ -3,19 +3,19 @@
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense  } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Button } from "@/app/acciones/components/ui/button";
-import { Input } from "@/app/acciones/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/acciones/components/ui/card";
-import ProductCard from '@/app/acciones/components/ProductCard'; 
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import ProductCard from '@/app/components/ProductCard'; 
 import { toast } from 'react-hot-toast';
-import ProductInfo from '@/app/acciones/components/ProductInfo';
+import ProductInfo from '@/app/components/ProductInfo';
 import ConectorPluginV3 from '@/app/utils/ConectorPluginV3';
 import { Product, CartItem, IBusinessInfo, IStockLocation } from '@/app/types/product';
-import PriceAdjustmentModal from '@/app/acciones/components/PriceAdjustmentModal';
+import PriceAdjustmentModal from '@/app/components/PriceAdjustmentModal';
 
-const PaymentModal = lazy(() => import('@/app/acciones/components/PaymentModal'));
-const CorteModal = lazy(() => import('@/app/acciones/components/CorteModal'));
-const CorteConfirmationModal = lazy(() => import('@/app/acciones/components/CorteConfirmationModal'));
+const PaymentModal = lazy(() => import('@/app/components/PaymentModal'));
+const CorteModal = lazy(() => import('@/app/components/CorteModal'));
+const CorteConfirmationModal = lazy(() => import('@/app/components/CorteConfirmationModal'));
 
 interface AdjustedCartItem extends CartItem {
     adjustedPrice?: number;

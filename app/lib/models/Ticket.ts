@@ -1,3 +1,5 @@
+// app/lib/models/Ticket.ts
+
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ITicketItem extends Document {
@@ -6,9 +8,9 @@ export interface ITicketItem extends Document {
   quantity: number;
   unitType: 'pieces' | 'boxes';
   pricePerUnit: number;
-  costPerUnit: number; // Nuevo campo para el costo por unidad
+  costPerUnit: number;
   total: number;
-  profit: number; // Nuevo campo para la ganancia por ítem
+  profit: number;
 }
 
 export interface ITicket extends Document {
@@ -17,7 +19,7 @@ export interface ITicket extends Document {
   sequenceNumber: number;
   items: ITicketItem[];
   totalAmount: number;
-  totalProfit: number; // Nuevo campo para la ganancia total
+  totalProfit: number;
   paymentType: 'cash' | 'card';
   amountPaid: number;
   change: number;
@@ -30,9 +32,9 @@ const TicketItemSchema: Schema = new Schema({
   quantity: { type: Number, required: true },
   unitType: { type: String, enum: ['pieces', 'boxes'], required: true },
   pricePerUnit: { type: Number, required: true },
-  costPerUnit: { type: Number, required: true }, // Nuevo campo
+  costPerUnit: { type: Number, required: true },
   total: { type: Number, required: true },
-  profit: { type: Number, required: true } // Nuevo campo
+  profit: { type: Number, required: true }
 });
 
 const TicketSchema: Schema = new Schema({
@@ -41,16 +43,15 @@ const TicketSchema: Schema = new Schema({
   sequenceNumber: { type: Number, required: true },
   items: [TicketItemSchema],
   totalAmount: { type: Number, required: true },
-  totalProfit: { type: Number, required: true }, // Nuevo campo
+  totalProfit: { type: Number, required: true },
   paymentType: { type: String, enum: ['cash', 'card'], required: true },
   amountPaid: { type: Number, required: true },
   change: { type: Number, required: true },
   date: { type: Date, default: Date.now }
 });
 
-// Índice compuesto para garantizar la unicidad de location + sequenceNumber
+// Índices
 TicketSchema.index({ location: 1, sequenceNumber: 1 }, { unique: true });
-
 TicketSchema.index({ location: 1, date: 1 });
 
 export default mongoose.models.Ticket || mongoose.model<ITicket>('Ticket', TicketSchema);

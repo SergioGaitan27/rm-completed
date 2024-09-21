@@ -1,6 +1,6 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/acciones/components/ui/dialog";
-import { Button } from "@/app/acciones/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog";
+import { Button } from "@/app/components/ui/button";
 
 interface CorteConfirmationModalProps {
   isOpen: boolean;

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/acciones/components/ui/dialog";
-import { Input } from "@/app/acciones/components/ui/input";
-import { Button } from "@/app/acciones/components/ui/button";
-import { Label } from "@/app/acciones/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/app/acciones/components/ui/radio-group";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog";
+import { Input } from "@/app/components/ui/input";
+import { Button } from "@/app/components/ui/button";
+import { Label } from "@/app/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/app/components/ui/radio-group";
 import { CartItem } from '@/app/types/product';
 
 interface AdjustedCartItem extends CartItem {

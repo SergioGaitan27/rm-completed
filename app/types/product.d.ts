@@ -113,3 +113,30 @@ export interface IPedidoNumber {
   date: string;
   isSurtido: boolean;
 }
+
+//////////// TICKETS ///////////////////////////////
+
+export interface ITicketItem {
+  productId: Types.ObjectId;
+  productName: string;
+  quantity: number;
+  unitType: 'pieces' | 'boxes';
+  pricePerUnit: number;
+  costPerUnit: number;
+  total: number;
+  profit: number;
+}
+
+export interface ITicket {
+  _id: Types.ObjectId;
+  ticketId: string;
+  location: string;
+  sequenceNumber: number;
+  items: ITicketItem[];
+  totalAmount: number;
+  totalProfit: number;
+  paymentType: 'cash' | 'card';
+  amountPaid: number;
+  change: number;
+  date: Date;
+}

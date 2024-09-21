@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation'; // Cambiado de 'next/router' a 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/acciones/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/acciones/components/ui/select";
-import { Button } from "@/app/acciones/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
+import { Button } from "@/app/components/ui/button";
 import { toast } from 'react-hot-toast';
 import ConectorPluginV3 from '@/app/utils/ConectorPluginV3';
 

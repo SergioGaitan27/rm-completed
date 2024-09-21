@@ -1,38 +1,62 @@
+// app/api/tickets/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
-import { processTicket, getTicketStats } from '@/app/lib/actions/tickets';
+import { processTicket, getTicketById, getTicketsInRange } from '@/app/lib/actions/tickets';
 
 export async function POST(req: NextRequest) {
   try {
     const ticketData = await req.json();
     const { newTicket, updatedProducts } = await processTicket(ticketData);
 
-    return NextResponse.json({ 
-      message: 'Ticket guardado exitosamente', 
-      ticket: newTicket,
-      updatedProducts: updatedProducts
-    }, { status: 201 });
-  } catch (error) {
-    console.error('Error al guardar el ticket:', error);
-    return NextResponse.json({ error: 'Error al guardar el ticket' }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      message: 'Ticket procesado exitosamente',
+      data: {
+        ticket: newTicket,
+        updatedProducts
+      }
+    }, { status: 200 });
+  } catch (error: unknown) {
+    console.error("Error detallado:", error);
+    if (error instanceof Error) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ success: false, message: 'Ocurrió un error desconocido' }, { status: 500 });
   }
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const url = new URL(req.url);
-    const startDateStr = url.searchParams.get('startDate');
-    const endDateStr = url.searchParams.get('endDate');
+    const { searchParams } = new URL(req.url);
 
-    const startDate = startDateStr ? new Date(startDateStr) : new Date();
-    const endDate = endDateStr ? new Date(endDateStr) : new Date();
-    startDate.setHours(0, 0, 0, 0); // Inicio del día
-    endDate.setHours(23, 59, 59, 999); // Fin del día
+    const ticketId = searchParams.get('ticketId');
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
 
-    const stats = await getTicketStats(startDate, endDate);
-
-    return NextResponse.json(stats);
-  } catch (error) {
-    console.error('Error al obtener los tickets:', error);
-    return NextResponse.json({ error: 'Error al obtener los tickets' }, { status: 500 });
+    if (ticketId) {
+      // Obtener un ticket por su ID
+      const ticket = await getTicketById(ticketId);
+      return NextResponse.json({
+        success: true,
+        data: ticket
+      }, { status: 200 });
+    } else if (startDateParam && endDateParam) {
+      // Obtener los tickets en un rango de fechas
+      const startDate = new Date(startDateParam);
+      const endDate = new Date(endDateParam);
+      const tickets = await getTicketsInRange(startDate, endDate);
+      return NextResponse.json({
+        success: true,
+        data: tickets
+      }, { status: 200 });
+    } else {
+      return NextResponse.json({ success: false, message: 'Parámetros insuficientes' }, { status: 400 });
+    }
+  } catch (error: unknown) {
+    console.error("Error detallado:", error);
+    if (error instanceof Error) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ success: false, message: 'Ocurrió un error desconocido' }, { status: 500 });
   }
 }

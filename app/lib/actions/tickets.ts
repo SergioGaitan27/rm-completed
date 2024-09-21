@@ -1,4 +1,5 @@
 // app/lib/actions/tickets.ts
+
 import { connectDB } from '@/app/lib/db/mongodb';
 import Ticket, { ITicket } from '@/app/lib/models/Ticket';
 import Product, { IProduct, IStockLocation } from '@/app/lib/models/Producto';
@@ -31,7 +32,7 @@ interface TicketData {
   location: string;
 }
 
-// Función auxiliar
+// Función auxiliar para obtener el siguiente número de secuencia
 async function getNextSequenceNumber(location: string): Promise<number> {
   const lastTicket = await Ticket.findOne({ location }).sort('-sequenceNumber');
   return lastTicket ? lastTicket.sequenceNumber + 1 : 1;
@@ -40,9 +41,9 @@ async function getNextSequenceNumber(location: string): Promise<number> {
 // Función principal para procesar un ticket
 export async function processTicket(ticketData: TicketData) {
   await connectDB();
-  
+
   const { items, totalAmount, paymentType, amountPaid, change, location } = ticketData;
-  
+
   const sequenceNumber = await getNextSequenceNumber(location);
   const ticketId = `${location}-${sequenceNumber.toString().padStart(6, '0')}`;
 
@@ -87,12 +88,12 @@ export async function processTicket(ticketData: TicketData) {
   if (pusherServer) {
     await pusherServer.trigger('sales-channel', 'new-sale', {
       ticketId: newTicket.ticketId,
-    profit: totalProfit,
-    location: location,
-    totalAmount: totalAmount,
-    paymentType: paymentType,
-    itemsSold: updatedItems.length,
-    timestamp: new Date().toISOString()
+      profit: totalProfit,
+      location: location,
+      totalAmount: totalAmount,
+      paymentType: paymentType,
+      itemsSold: updatedItems.length,
+      timestamp: new Date().toISOString()
     });
   } else {
     console.warn('Pusher no está inicializado. No se pudo enviar el evento.');
@@ -120,31 +121,49 @@ export async function processTicket(ticketData: TicketData) {
   return { newTicket, updatedProducts };
 }
 
+// Función para obtener un ticket por su ID
 export async function getTicketById(ticketId: string) {
-    await connectDB();
-  
-    if (!ticketId) {
-      throw new Error('ID de ticket no proporcionado');
-    }
-  
-    const ticket = await Ticket.findOne({ ticketId }).lean();
-  
-    if (!ticket) {
-      throw new Error('Ticket no encontrado');
-    }
-  
-    return ticket;
+  await connectDB();
+
+  if (!ticketId) {
+    throw new Error('ID de ticket no proporcionado');
   }
 
-  export async function getTicketStats(startDate: Date, endDate: Date) {
-    await connectDB();
-  
-    startDate.setUTCHours(0, 0, 0, 0); // Inicio del día en UTC
-    endDate.setUTCHours(23, 59, 59, 999); // Fin del día en UTC
-  
-    const query: any = {
-      date: { $gte: startDate, $lte: endDate },
-    };
+  const ticket = await Ticket.findOne({ ticketId }).lean();
+
+  if (!ticket) {
+    throw new Error('Ticket no encontrado');
+  }
+
+  return ticket;
+}
+
+// Función para obtener los tickets en un rango de fechas
+export async function getTicketsInRange(startDate: Date, endDate: Date) {
+  await connectDB();
+
+  startDate.setUTCHours(0, 0, 0, 0); // Inicio del día en UTC
+  endDate.setUTCHours(23, 59, 59, 999); // Fin del día en UTC
+
+  const query: any = {
+    date: { $gte: startDate, $lte: endDate },
+  };
+
+  const tickets = await Ticket.find(query).sort({ date: -1 });
+
+  return tickets;
+}
+
+// Función para obtener estadísticas de tickets en un rango de fechas
+export async function getTicketStats(startDate: Date, endDate: Date) {
+  await connectDB();
+
+  startDate.setUTCHours(0, 0, 0, 0); // Inicio del día en UTC
+  endDate.setUTCHours(23, 59, 59, 999); // Fin del día en UTC
+
+  const query: any = {
+    date: { $gte: startDate, $lte: endDate },
+  };
 
   const tickets = await Ticket.find(query).sort({ date: -1 });
 
