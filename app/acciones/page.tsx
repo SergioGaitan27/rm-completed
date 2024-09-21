@@ -628,25 +628,33 @@ const SalesPage: React.FC = () => {
       },
       body: JSON.stringify(ticketData),
     });
-
+  
     if (!response.ok) {
       throw new Error('Error al guardar el ticket');
     }
-
-    const data = await response.json();
+  
+    const result = await response.json();
     
-    setProducts(prevProducts => {
-      const updatedProducts = [...prevProducts];
-      data.updatedProducts.forEach((updatedProduct: Product) => {
-        const index = updatedProducts.findIndex(p => p._id === updatedProduct._id);
-        if (index !== -1) {
-          updatedProducts[index] = updatedProduct;
-        }
-      });
-      return updatedProducts;
-    });
-
-    await printTicket(data.ticket?.ticketId);
+    if (result.success && result.data) {
+      const { ticket, updatedProducts } = result.data;
+      
+      if (updatedProducts && Array.isArray(updatedProducts)) {
+        setProducts(prevProducts => {
+          const newProducts = [...prevProducts];
+          updatedProducts.forEach((updatedProduct: Product) => {
+            const index = newProducts.findIndex(p => p._id === updatedProduct._id);
+            if (index !== -1) {
+              newProducts[index] = updatedProduct;
+            }
+          });
+          return newProducts;
+        });
+      } else {
+        console.warn('No se recibieron productos actualizados del servidor');
+      }
+  
+      // Utiliza ticket si necesitas acceder a la información del ticket
+      await printTicket(ticket?.ticketId);
       handleClosePaymentModal();
       setCart([]);
       toast.success('Pago procesado e impreso exitosamente');
@@ -655,13 +663,16 @@ const SalesPage: React.FC = () => {
       if (searchInputRef.current) {
         searchInputRef.current.focus();
       }
-    } catch (error) {
-      console.error('Error al procesar el pago o imprimir:', error);
-      toast.error('Error al procesar el pago o imprimir el ticket');
-    } finally {
-      setIsLoading(false);
+    } else {
+      throw new Error(result.message || 'Error desconocido al procesar el ticket');
     }
-  };
+  } catch (error) {
+    console.error('Error al procesar el pago o imprimir:', error);
+    toast.error('Error al procesar el pago o imprimir el ticket');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleCorte = async () => {
     const cashAmount = parseFloat(cashAmountCorte);
@@ -768,10 +779,6 @@ const SalesPage: React.FC = () => {
     setCorteResults(null);
     setShowCorteConfirmation(false);
   };
-
-  if (status === 'loading') {
-    return <div>Cargando...</div>;
-  }
 
   return (
     <div className="h-screen bg-background text-foreground p-4 flex overflow-hidden">
