@@ -1,81 +1,64 @@
-import { NextResponse } from 'next/server';
-   import { connectDB } from '@/app/lib/db/mongodb';
-   import Ticket from '@/app/lib/models/Ticket';
-   import Corte from '@/app/lib/models/Corte';
-   import moment from 'moment-timezone';
+// app/lib/actions/corte.ts
 
-   const TIMEZONE = 'America/Mexico_City';
+import { connectDB } from '@/app/lib/db/mongodb';
+import Ticket from '@/app/lib/models/Ticket';
+import Corte, { ICorte } from '@/app/lib/models/Corte';
+import moment from 'moment-timezone';
 
-   export async function realizarCorte(data: { location: string; actualCash: number; actualCard: number }) {
-     try {
-       await connectDB();
+interface CorteData {
+  actualCash: number;
+  actualCard: number;
+  location: string;
+}
 
-       const { location, actualCash, actualCard } = data;
+const TIMEZONE = 'America/Mexico_City';
 
-       const now = moment().tz(TIMEZONE);
-       const corteDate = now.startOf('day').toDate();
-       const endDate = now.toDate();
+export async function processCorte(corteData: CorteData) {
+  await connectDB();
 
-       // Obtenemos los tickets sumados
-       const tickets = await Ticket.find({
-         location,
-         date: { $gte: corteDate, $lt: endDate }
-       }).select('ticketId totalAmount paymentType date');
+  const { location, actualCash, actualCard } = corteData;
 
-       // Calculamos los totales
-       const result = await Ticket.aggregate([
-         {
-           $match: {
-             location,
-             date: { $gte: corteDate, $lt: endDate }
-           }
-         },
-         {
-           $group: {
-             _id: null,
-             expectedCash: {
-               $sum: {
-                 $cond: [{ $eq: ["$paymentType", "cash"] }, "$totalAmount", 0]
-               }
-             },
-             expectedCard: {
-               $sum: {
-                 $cond: [{ $eq: ["$paymentType", "card"] }, "$totalAmount", 0]
-               }
-             },
-             totalTickets: { $sum: 1 }
-           }
-         }
-       ]);
+  // Validar los montos ingresados
+  if (isNaN(actualCash) || isNaN(actualCard)) {
+    throw new Error('Montos de efectivo o tarjeta inválidos');
+  }
 
-       const { expectedCash, expectedCard, totalTickets } = result[0] || { expectedCash: 0, expectedCard: 0, totalTickets: 0 };
+  // Obtener los tickets del día para la ubicación actual
+  const startOfDay = moment().tz(TIMEZONE).startOf('day').toDate();
+  const endOfDay = moment().tz(TIMEZONE).endOf('day').toDate();
 
-       const newCorte = new Corte({
-         location,
-         date: corteDate,
-         expectedCash,
-         expectedCard,
-         actualCash,
-         actualCard,
-         totalTickets
-       });
-       await newCorte.save();
+  const tickets = await Ticket.find({
+    location: location,
+    date: { $gte: startOfDay, $lte: endOfDay },
+  });
 
-       return NextResponse.json({
-         success: true,
-         data: {
-           expectedCash,
-           expectedCard,
-           actualCash,
-           actualCard,
-           totalTickets,
-           tickets,
-           corteId: newCorte._id
-         }
-       });
+  // Calcular los totales esperados
+  const expectedCash = tickets
+    .filter((ticket) => ticket.paymentType === 'cash')
+    .reduce((sum, ticket) => sum + ticket.totalAmount, 0);
 
-     } catch (error) {
-       console.error('Error al realizar el corte:', error);
-       return NextResponse.json({ success: false, message: 'Error al realizar el corte' }, { status: 500 });
-     }
-   }
+  const expectedCard = tickets
+    .filter((ticket) => ticket.paymentType === 'card')
+    .reduce((sum, ticket) => sum + ticket.totalAmount, 0);
+
+  // Crear el corte
+  const corte: ICorte = new Corte({
+    location: location,
+    date: moment().tz(TIMEZONE).toDate(),
+    expectedCash,
+    expectedCard,
+    actualCash,
+    actualCard,
+    totalTickets: tickets.length,
+  });
+
+  await corte.save();
+
+  return {
+    expectedCash,
+    expectedCard,
+    actualCash,
+    actualCard,
+    totalTickets: tickets.length,
+  };
+}

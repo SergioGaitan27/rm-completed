@@ -1,3 +1,4 @@
+// app/lib/models/Corte.ts
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ICorte extends Document {
@@ -17,7 +18,7 @@ const CorteSchema: Schema = new Schema({
   expectedCard: { type: Number, required: true },
   actualCash: { type: Number, required: true },
   actualCard: { type: Number, required: true },
-  totalTickets: { type: Number, required: true }
+  totalTickets: { type: Number, required: true },
 });
 
 CorteSchema.index({ location: 1, date: 1 });
