@@ -17,6 +17,13 @@ export async function realizarCorte(data: { location: string; actualCash: number
       nowUTC.getUTCDate()
     ));
 
+    // Obtenemos los tickets sumados
+    const tickets = await Ticket.find({
+      location,
+      date: { $gte: corteDateUTC, $lt: nowUTC }
+    }).select('ticketId totalAmount paymentType date');
+
+    // Calculamos los totales
     const result = await Ticket.aggregate([
       {
         $match: {
@@ -63,6 +70,7 @@ export async function realizarCorte(data: { location: string; actualCash: number
         actualCash,
         actualCard,
         totalTickets,
+        tickets, // Incluimos los tickets en la respuesta
         corteId: newCorte._id
       }
     });

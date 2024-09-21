@@ -711,7 +711,13 @@ const SalesPage: React.FC = () => {
       conector.EscribirTexto(`  Esperado: $${(corteData.expectedCash + corteData.expectedCard).toFixed(2)}\n`);
       conector.EscribirTexto(`  Real: $${(corteData.actualCash + corteData.actualCard).toFixed(2)}\n`);
       conector.EscribirTexto(`  Diferencia: $${((corteData.actualCash + corteData.actualCard) - (corteData.expectedCash + corteData.expectedCard)).toFixed(2)}\n`);
-  
+      if (corteData.tickets && corteData.tickets.length > 0) {
+        conector.EscribirTexto("Tickets Sumados:\n");
+        corteData.tickets.forEach((ticket: any) => {
+          conector.EscribirTexto(`ID: ${ticket.ticketId} - Total: $${ticket.totalAmount.toFixed(2)} - Pago: ${ticket.paymentType}\n`);
+        });
+      }
+      
       conector.Corte(1);
   
       const resultado = await conector.imprimirEn(printerConfig.printerName);
@@ -743,14 +749,14 @@ const SalesPage: React.FC = () => {
           actualCard: parseFloat(cardAmountCorte)
         }),
       });
-
+  
       if (!response.ok) {
         throw new Error('Error al realizar el corte');
       }
-
+  
       const data = await response.json();
-      setCorteResults(data.data);
-      await printCorteTicket(data.data);
+      setCorteResults(data.data); // Ahora data.data incluye los tickets
+      await printCorteTicket(data.data); // Pasamos los datos para imprimir
       toast.success('Corte realizado exitosamente');
     } catch (error) {
       console.error('Error:', error);
@@ -760,6 +766,7 @@ const SalesPage: React.FC = () => {
       setShowCorteConfirmation(false);
     }
   };
+  
 
   const closeCorteModal = () => {
     setIsCorteModalOpen(false);

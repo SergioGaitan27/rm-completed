@@ -68,6 +68,18 @@ const CorteModal: React.FC<CorteModalProps> = ({
             <p>Tarjeta Real: ${corteResults.actualCard.toFixed(2)}</p>
             <p>Diferencia Tarjeta: ${(corteResults.actualCard - corteResults.expectedCard).toFixed(2)}</p>
             <p>Total de Tickets: {corteResults.totalTickets}</p>
+            {corteResults.tickets && corteResults.tickets.length > 0 && (
+              <div>
+                <h4 className="font-bold">Tickets Sumados:</h4>
+                <ul>
+                  {corteResults.tickets.map((ticket: any) => (
+                    <li key={ticket.ticketId}>
+                      ID: {ticket.ticketId} - Total: ${ticket.totalAmount.toFixed(2)} - Pago: {ticket.paymentType}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
         <DialogFooter>
