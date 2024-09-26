@@ -265,7 +265,9 @@ const ProductCatalog: React.FC = () => {
   }, [filteredProducts, toast]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value.toUpperCase());
+    const upperCaseValue = e.target.value.toUpperCase();
+    setSearchTerm(upperCaseValue);
+    e.target.value = upperCaseValue; // Esto actualiza el valor del input directamente
   };
 
   const handleSearch = useCallback(() => {
