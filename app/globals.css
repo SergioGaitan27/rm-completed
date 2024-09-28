@@ -134,3 +134,27 @@
     font-size: 16px;
   }
 }
+
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Previene el zoom en Safari en iOS */
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  font-size: 16px;
+}
+
+/* Ajusta el tamaño de fuente para pantallas más grandes */
+@media screen and (min-width: 768px) {
+  input[type="text"],
+  input[type="number"],
+  select,
+  textarea {
+    font-size: 14px;
+  }
+}
