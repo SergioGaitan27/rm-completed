@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import {
@@ -12,34 +12,52 @@ interface MobileConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   paymentType: 'cash' | 'card';
-  amountPaid: string;
-  change: number;
   totalAmount: number;
   isLoading: boolean;
+  customerName: string;
   onPaymentTypeChange: (type: 'cash' | 'card') => void;
-  onAmountPaidChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onConfirmPayment: () => void;
+  onCustomerNameChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onConfirm: () => void;
 }
 
 const MobileConfirmModal: React.FC<MobileConfirmModalProps> = ({
   isOpen,
   onClose,
   paymentType,
-  amountPaid,
-  change,
   totalAmount,
   isLoading,
+  customerName,
   onPaymentTypeChange,
-  onAmountPaidChange,
-  onConfirmPayment
+  onCustomerNameChange,
+  onConfirm
 }) => {
+  const customerNameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        customerNameInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Procesar Pago</DialogTitle>
+          <DialogTitle>Confirmar Pedido</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          <div className="flex flex-col">
+            <label htmlFor="customerName" className="mb-2">Nombre del Cliente:</label>
+            <Input
+              id="customerName"
+              value={customerName}
+              onChange={onCustomerNameChange}
+              placeholder="Ingrese el nombre del cliente"
+              ref={customerNameInputRef}
+            />
+          </div>
           <div className="flex justify-between items-center">
             <span>Total a pagar:</span>
             <span className="font-bold">${totalAmount.toFixed(2)}</span>
@@ -63,28 +81,10 @@ const MobileConfirmModal: React.FC<MobileConfirmModalProps> = ({
               </Button>
             </div>
           </div>
-          {/* {paymentType === 'cash' && (
-            <>
-              <div className="flex flex-col">
-                <label htmlFor="amountPaid">Monto recibido:</label>
-                <Input
-                  id="amountPaid"
-                  type="number"
-                  value={amountPaid}
-                  onChange={onAmountPaidChange}
-                  placeholder="Ingrese el monto recibido"
-                />
-              </div>
-              <div className="flex justify-between items-center">
-                <span>Cambio:</span>
-                <span className="font-bold">${change.toFixed(2)}</span>
-              </div>
-            </>
-          )} */}
         </div>
         <div className="flex justify-end">
-          <Button onClick={onConfirmPayment} disabled={isLoading}>
-            {isLoading ? 'Procesando...' : 'Confirmar Pedido'}
+          <Button onClick={onConfirm} disabled={isLoading || !customerName.trim()}>
+            {isLoading ? 'Procesando...' : 'Confirmar'}
           </Button>
         </div>
       </DialogContent>

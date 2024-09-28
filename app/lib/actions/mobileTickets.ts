@@ -9,6 +9,26 @@ import moment from 'moment-timezone';
 
 const TIMEZONE = 'America/Mexico_City';
 
+interface OrderTicketData {
+  items: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    unitType: 'pieces' | 'boxes';
+    pricePerUnit: number;
+  }[];
+  totalAmount: number;
+  paymentType: 'cash' | 'card';
+  location: string;
+  deviceId: string;
+  gpsCoordinates: {
+    latitude: number;
+    longitude: number;
+  };
+  employeeId: string;
+  customerName: string;
+}
+
 interface SimpleMobileTicketItem {
   productId: mongoose.Types.ObjectId;
   productName: string;
@@ -18,6 +38,7 @@ interface SimpleMobileTicketItem {
   costPerUnit: number;
   total: number;
   profit: number;
+  piecesPerBox?: number;
 }
 
 interface MobileTicketData {
@@ -41,6 +62,78 @@ interface MobileTicketData {
   offlineCreated: boolean;
   customerName: string;
 }
+
+interface OrderTicketData {
+    items: {
+      productId: string;
+      productName: string;
+      quantity: number;
+      unitType: 'pieces' | 'boxes';
+      pricePerUnit: number;
+    }[];
+    totalAmount: number;
+    paymentType: 'cash' | 'card';
+    location: string;
+    deviceId: string;
+    gpsCoordinates: {
+      latitude: number;
+      longitude: number;
+    };
+    employeeId: string;
+    customerName: string;
+  }
+  
+  export async function createOrderTicket(orderData: OrderTicketData) {
+    await connectDB();
+  
+    const { items, totalAmount, paymentType, location, deviceId, gpsCoordinates, employeeId, customerName } = orderData;
+  
+    const sequenceNumber = await getNextSequenceNumber(location);
+    const ticketId = `${location}-O-${sequenceNumber.toString().padStart(6, '0')}`;
+  
+    const updatedItems: SimpleMobileTicketItem[] = await Promise.all(items.map(async (item) => {
+        const product = await Product.findById(item.productId);
+        if (!product) {
+          throw new Error(`Producto no encontrado: ${item.productId}`);
+        }
+        return {
+          productId: new mongoose.Types.ObjectId(item.productId),
+          productName: item.productName,
+          quantity: item.quantity,
+          unitType: item.unitType,
+          pricePerUnit: item.pricePerUnit,
+          costPerUnit: product.cost,
+          total: item.pricePerUnit * item.quantity,
+          profit: (item.pricePerUnit - product.cost) * item.quantity,
+          piecesPerBox: item.unitType === 'boxes' ? product.piecesPerBox : undefined
+        };
+      }));
+  
+    const newTicket: IMobileTicket = new MobileTicket({
+      ticketId,
+      location,
+      sequenceNumber,
+      customerName,
+      items: updatedItems,
+      totalAmount,
+      totalProfit: 0, // Esto se puede calcular más tarde si es necesario
+      paymentType,
+      amountPaid: 0, // Esto se actualizará cuando se procese el pago
+      change: 0, // Esto se actualizará cuando se procese el pago
+      date: moment().tz(TIMEZONE).toDate(),
+      deviceId,
+      gpsCoordinates,
+      employeeId,
+      syncStatus: 'synced',
+      offlineCreated: false,
+      paymentStatus: 'unpaid',
+      fulfillmentStatus: 'pending'
+    });
+  
+    await newTicket.save();
+  
+    return newTicket;
+  }
 
 async function getNextSequenceNumber(location: string): Promise<number> {
   const lastTicket = await MobileTicket.findOne({ location }).sort('-sequenceNumber');
@@ -211,3 +304,44 @@ export async function getMobileTicketStats(startDate: Date, endDate: Date) {
 
   return { totalProfit, locations, devices, employees };
 }
+
+export async function updateMobileTicket(ticketId: string, updateData: {
+    paymentStatus?: 'unpaid' | 'paid',
+    fulfillmentStatus?: 'pending' | 'processing' | 'completed',
+    paymentType?: 'cash' | 'card',
+    amountPaid?: number,
+    change?: number
+  }) {
+    await connectDB();
+  
+    const ticket = await MobileTicket.findOne({ ticketId });
+  
+    if (!ticket) {
+      throw new Error('Ticket no encontrado');
+    }
+  
+    if (updateData.paymentStatus) {
+      ticket.paymentStatus = updateData.paymentStatus;
+    }
+  
+    if (updateData.fulfillmentStatus) {
+      ticket.fulfillmentStatus = updateData.fulfillmentStatus;
+    }
+  
+    if (updateData.paymentType) {
+      ticket.paymentType = updateData.paymentType;
+    }
+  
+    if (updateData.amountPaid !== undefined) {
+      ticket.amountPaid = updateData.amountPaid;
+    }
+  
+    if (updateData.change !== undefined) {
+      ticket.change = updateData.change;
+    }
+  
+    await ticket.save();
+  
+    return ticket;
+  }
+  

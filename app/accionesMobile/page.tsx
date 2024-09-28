@@ -8,13 +8,10 @@ import { Input } from "@/app/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import MobileProductCard from '@/app/components/MobileProductCard'; 
 import { toast } from 'react-hot-toast';
-import ConectorPluginV3 from '@/app/utils/ConectorPluginV3';
 import { Product, CartItem, IBusinessInfo, IStockLocation } from '@/app/types/product';
 import PriceAdjustmentModal from '@/app/components/PriceAdjustmentModal';
 
 const MobileConfirmModal = lazy(() => import('@/app/components/MobileConfirmModal'));
-const MobileCorteModal = lazy(() => import('@/app/components/MobileCorteModal'));
-const CorteConfirmationModal = lazy(() => import('@/app/components/CorteConfirmationModal'));
 
 interface AdjustedCartItem extends CartItem {
     adjustedPrice?: number;
@@ -67,21 +64,10 @@ const MobileSalesPage: React.FC = () => {
   const [MobileProductInfoBottom, setMobileProductInfoBottom] = useState<Product | null>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const [productSearchedFromBottom, setProductSearchedFromBottom] = useState(false);
-  const [isMobilePaymentModalOpen, setIsMobilePaymentModalOpen] = useState(false);
-  const [paymentType, setPaymentType] = useState<'cash' | 'card'>('cash');
-  const [amountPaid, setAmountPaid] = useState('');
-  const [change, setChange] = useState(0);
   const amountPaidInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [pluginConnected, setPluginConnected] = useState(false);
   const [businessInfo, setBusinessInfo] = useState<IBusinessInfo | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isMobileCorteModalOpen, setIsMobileCorteModalOpen] = useState(false);
-  const [cashAmountCorte, setCashAmountCorte] = useState('');
-  const [cardAmountCorte, setCardAmountCorte] = useState('');
-  const [corteResults, setCorteResults] = useState<any>(null);
-  const [isCorteLoading, setIsCorteLoading] = useState(false);
-  const [showCorteConfirmation, setShowCorteConfirmation] = useState(false);
   const [cart, setCart] = useState<CartItem[]>(() => {
     if (typeof window !== 'undefined') {
       const savedCart = localStorage.getItem('cart');
@@ -96,7 +82,9 @@ const MobileSalesPage: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
-  
+  const [isMobileConfirmModalOpen, setIsMobileConfirmModalOpen] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [paymentType, setPaymentType] = useState<'cash' | 'card'>('cash');
   const [isPriceAdjustmentModalOpen, setIsPriceAdjustmentModalOpen] = useState(false);
   const [cartUpdateTrigger, setCartUpdateTrigger] = useState(0);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -150,10 +138,6 @@ const MobileSalesPage: React.FC = () => {
   useEffect(() => {
     fetchBusinessInfo();
   }, [fetchBusinessInfo]);
-
-  useEffect(() => {
-    setPluginConnected(true);
-  }, []);
 
   const fetchProducts = useCallback(async () => {
     if (isProductsLoaded && !isInitialLoad) return;
@@ -218,9 +202,6 @@ const MobileSalesPage: React.FC = () => {
     switch (searchTerm) {
       case 'ACTUALIZAR':
         fetchProducts();
-        break;
-      case 'CORTE':
-        setIsMobileCorteModalOpen(true);
         break;
       case 'P-MAYOREO':
         applyPriceToCart('mayoreo');
@@ -433,358 +414,99 @@ const MobileSalesPage: React.FC = () => {
     }
   };
 
-  const [printerConfig, setPrinterConfig] = useState<{ printerName: string; paperSize: string }>({
-    printerName: '',
-    paperSize: '80mm',
-  });
-
-  useEffect(() => {
-    // Cargar la configuración de la impresora
-    const savedConfig = localStorage.getItem('printerConfig');
-    if (savedConfig) {
-      setPrinterConfig(JSON.parse(savedConfig));
-    }
-  }, []);
-
-  const printTicket = async (ticketId?: string) => {
-    if (!pluginConnected) {
-      toast.error('El plugin de impresión no está conectado');
-      return;
-    }
-  
-    try {
-      const conector = new ConectorPluginV3(undefined, 'YmEwNzRiYWFfXzIwMjQtMDctMTBfXzIwMjQtMTAtMDgjIyMxUXJaS2xpWjVjbU01VEVmckg5Zm93RWxWOHVmQmhYNjVFQnE1akVFMzBZWG51QUs5YUd0U3Ayc2d0N2E0a1ZiOExEMm1EV2NnTjJhTWR0dDhObUw2bFBLTERGYjBXYkFpTTBBNjJTYlo5KzBLRUVLMzlFeEVLcVR5d2dEcWdsQzUvWlhxZCtxUC9aQ1RnL2M5UVhKRUxJRXVYOGVRU0dxZlg4UFF1MkFiY3doME5mdUdYaitHVk1LMzRvcmRDN0FEeTg4ZStURmlQRktrRW9UcnBMSisrYkJQTC8wZ1ZZdFIxdTNGV3dYQWR0Ylg3U25paU5qZ0I5QmNTQlZRRmp5NWRGYUVyODFnak1UR2VPWHB6T2xMZUhWWmJFVUJCQkhEOENyUGJ4NlNQYXBxOHA1NVlCNS9IZkJ0VWpsSDdMa1JocGlBSWF6Z2hVdzRPMFZ6aVZ6enpVbHNnR091VElWdTdaODRvUDlvWjg5bGI5djIxbTcwSDB4L1ZqSXlGNU52b2JTemoyNXMzL3NxS2I1SEtYVHduVW5tTXBvcWxGZmwwajZXM1ZFQnhkdjh2Y2VRMWtaSWkyY1ZWbjNUK29tTkJLWFRkR0NQSS9UaWgyaWNWdFlQZ05IbENxUXBBK0c3ZHFBUTd4VEh6TEJuT2dMemU2THZuRkpRajBpZkt0dlNHNDNzVU82bmRUaS8zbHpta1orK2lIWmVZR3pIampKWnV5RFRRbEo2MUpOamVYUWpHMTliREFaNFZ3SDhJanBWOEUyRERBLzVDcEYwL1l5MTByTTdlT0t0K1JaTWFlc3pHbkRpeXoydHpRK0Z4ZjNrdFV3U1ZFbCtCcFQ2Y1NLSzVNaFFjWDJjMmlrcWpCbVZSNDBzSVhKMjV1VXB1Nko0L1liMzgzNE1iWT0=');
-  
-      await conector.Iniciar();
-      let anchoCaracteres;
-      switch (printerConfig.paperSize) {
-        case '58mm':
-          anchoCaracteres = 32;
-          break;
-        case '80mm':
-          anchoCaracteres = 48;
-          break;
-        case 'A4':
-          anchoCaracteres = 64;
-          break;
-        default:
-          anchoCaracteres = 48;
-          console.warn(`Tamaño de papel desconocido: ${printerConfig.paperSize}. Usando ancho por defecto.`);
-      }
-      if (businessInfo) {
-        conector.EstablecerEnfatizado(true);
-        conector.EstablecerTamañoFuente(1, 1);
-        conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
-        conector.EscribirTexto(`${businessInfo.businessName}\n`);
-        conector.EstablecerEnfatizado(false);
-        conector.EscribirTexto(`${businessInfo.address}\n`);
-        conector.EscribirTexto(`Tel: ${businessInfo.phone}\n`);
-        conector.EscribirTexto(`RFC: ${businessInfo.taxId}\n`);
-        conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-      }
-
-      conector.EstablecerEnfatizado(true);
-      conector.EstablecerTamañoFuente(1, 1);
-      conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
-      if (ticketId) {
-        conector.EscribirTexto(`ID: ${ticketId}\n`);
-      }
-      conector.EstablecerEnfatizado(false);
-      conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-      cart.forEach(item => {
-        const totalPieces = item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity;
-        conector.EscribirTexto(`${item.name}\n`);
-        conector.EscribirTexto(`${totalPieces} pzs x $${item.appliedPrice.toFixed(2)} = $${(totalPieces * item.appliedPrice).toFixed(2)}\n`);
-      });
-  
-      conector.EscribirTexto("\n");
-      conector.EscribirTexto(`Total: $${calculateTotal().toFixed(2)}\n`);
-      conector.EscribirTexto(`Método de pago: ${paymentType === 'cash' ? 'Efectivo' : 'Tarjeta'}\n`);
-      if (paymentType === 'cash') {
-        conector.EscribirTexto(`Monto pagado: $${amountPaid}\n`);
-        conector.EscribirTexto(`Cambio: $${change.toFixed(2)}\n`);
-      }
-
-      conector.Corte(1);
-      
-      const resultado = await conector.imprimirEn(printerConfig.printerName);
-      if (typeof resultado === 'object' && resultado !== null && 'error' in resultado) {
-        throw new Error(resultado.error);
-      } else if (resultado !== true) {
-        throw new Error('La impresión no se completó correctamente');
-      }
-  
-      toast.success('Ticket impreso correctamente');
-      if (searchInputRef.current) {
-        searchInputRef.current.focus();
-      }
-    } catch (error) {
-      console.error('Error al imprimir:', error);
-      if (error instanceof Error) {
-        toast.error(`Error al imprimir el ticket: ${error.message}`);
-      } else {
-        toast.error('Error desconocido al imprimir el ticket');
-      }
-    }
-  };
-
-  const handleOpenMobilePaymentModal = () => {
-    setIsMobilePaymentModalOpen(true);
-    setAmountPaid('');
-    setChange(0);
-    setPaymentType('cash');
-  };
-
-  useEffect(() => {
-    if (isMobilePaymentModalOpen && paymentType === 'cash') {
-      const timeoutId = setTimeout(() => {
-        amountPaidInputRef.current?.focus();
-      }, 100);
-  
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isMobilePaymentModalOpen, paymentType]);
-
-  const handleCloseMobilePaymentModal = () => {
-    setIsMobilePaymentModalOpen(false);
-    setPaymentType('cash');
-    setAmountPaid('');
-    setChange(0);
-  };
-
-  const handlePaymentTypeChange = (value: 'cash' | 'card') => {
-    setPaymentType(value);
-    if (value === 'card') {
-      setAmountPaid(calculateTotal().toFixed(2));
-      setChange(0);
-    } else {
-      setAmountPaid('');
-      setChange(0); 
-      setTimeout(() => {
-        amountPaidInputRef.current?.focus();
-      }, 0);
-    }
-  };
-
-  const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value;
-    setAmountPaid(inputValue);
-    
-    const paid = parseFloat(inputValue) || 0;
-    const total = calculateTotal();
-    setChange(paid - total);
-  };
-
   const isProductAvailable = (product: Product): boolean => {
     return product.availability && getRemainingQuantity(product) > 0;
   };
 
-  const handlePayment = async () => {
+  const handleCustomerNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCustomerName(e.target.value);
+  };
+  
+  const handlePaymentTypeChange = (type: 'cash' | 'card') => {
+    setPaymentType(type);
+  };
+  
+  const handleOpenMobileConfirmModal = () => {
+    setIsMobileConfirmModalOpen(true);
+    setCustomerName('');
+    setPaymentType('cash');
+  };
+  
+  const handleCloseMobileConfirmModal = () => {
+    setIsMobileConfirmModalOpen(false);
+  };
+
+  const handleConfirmOrder = async () => {
     if (!session || !session.user?.location) {
       toast.error('No se pudo obtener la ubicación del usuario');
       return;
     }
     setIsLoading(true);
-
-    const ticketData = {
-      items: cart.map(item => ({
-        productId: item._id,
-        productName: item.name,
-        quantity: item.quantity,
-        unitType: item.unitType,
-        pricePerUnit: item.appliedPrice,
-        total: item.appliedPrice * item.quantity * (item.unitType === 'boxes' ? item.piecesPerBox : 1)
-      })),
-      totalAmount: calculateTotal(),
-      paymentType,
-      amountPaid: parseFloat(amountPaid),
-      change,
-      location: session.user?.location,
-      deviceId,
-      gpsCoordinates,
-      employeeId: session.user.id,
-      offlineCreated: false // Asumimos que la venta se está realizando en línea
+  
+    const orderData = {
+      action: 'createOrder',
+      orderData: {
+        items: cart.map(item => ({
+          productId: item._id,
+          productName: item.name,
+          quantity: item.quantity,
+          unitType: item.unitType,
+          pricePerUnit: item.appliedPrice,
+        })),
+        totalAmount: calculateTotal(),
+        paymentType,
+        location: session.user.location,
+        deviceId,
+        gpsCoordinates,
+        employeeId: session.user.id,
+        customerName: customerName.trim()
+      }
     };
-
+  
     try {
       const response = await fetch('/api/mobileTickets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(ticketData),
+        body: JSON.stringify(orderData),
       });
-    
+  
       if (!response.ok) {
-        throw new Error('Error al guardar el ticket móvil');
+        throw new Error('Error al crear el ticket de pedido');
       }
-    
+  
       const result = await response.json();
+      console.log('Orden confirmada:', result);
       
-      if (result.success && result.data) {
-        const { ticket, updatedProducts } = result.data;
-        
-        if (updatedProducts && Array.isArray(updatedProducts)) {
-          setProducts(prevProducts => {
-            const newProducts = [...prevProducts];
-            updatedProducts.forEach((updatedProduct: Product) => {
-              const index = newProducts.findIndex(p => p._id === updatedProduct._id);
-              if (index !== -1) {
-                newProducts[index] = updatedProduct;
-              }
-            });
-            return newProducts;
-          });
-        } else {
-          console.warn('No se recibieron productos actualizados del servidor');
-        }
-    
-        await printTicket(ticket?.ticketId);
-        handleCloseMobilePaymentModal();
-        setCart([]);
-        toast.success('Pago procesado e impreso exitosamente');
-        setMobileProductInfoBottom(null);
-        setSearchTermBottom('');
-        if (searchInputRef.current) {
-          searchInputRef.current.focus();
-        }
-      } else {
-        throw new Error(result.message || 'Error desconocido al procesar el ticket móvil');
-      }
+      // Vaciar el carrito
+      setCart([]);
+      localStorage.removeItem('cart');
+  
+      // Redirigir a la página de pago con el ID del ticket
+      router.push(`/accionesMobile?ticketId=${result.data.ticket.ticketId}`);
+  
+      handleCloseMobileConfirmModal();
+      toast.success('Pedido confirmado. 🎉');
     } catch (error) {
-      console.error('Error al procesar el pago o imprimir:', error);
-      toast.error('Error al procesar el pago o imprimir el ticket');
+      console.error('Error al confirmar el pedido:', error);
+      toast.error('Error al confirmar el pedido');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCorte = async () => {
-    const cashAmount = parseFloat(cashAmountCorte);
-    const cardAmount = parseFloat(cardAmountCorte);
-
-    if (isNaN(cashAmount) || isNaN(cardAmount)) {
-      toast.error('Por favor, ingrese montos válidos para efectivo y tarjeta.');
-      return;
-    }
-    setShowCorteConfirmation(true);
-  };
-
-  const printCorteTicket = async (corteData: any) => {
-    if (!pluginConnected) {
-      toast.error('El plugin de impresión no está conectado');
-      return;
-    }
-  
-    try {
-      const conector = new ConectorPluginV3(undefined, 'YmEwNzRiYWFfXzIwMjQtMDctMTBfXzIwMjQtMTAtMDgjIyMxUXJaS2xpWjVjbU01VEVmckg5Zm93RWxWOHVmQmhYNjVFQnE1akVFMzBZWG51QUs5YUd0U3Ayc2d0N2E0a1ZiOExEMm1EV2NnTjJhTWR0dDhObUw2bFBLTERGYjBXYkFpTTBBNjJTYlo5KzBLRUVLMzlFeEVLcVR5d2dEcWdsQzUvWlhxZCtxUC9aQ1RnL2M5UVhKRUxJRXVYOGVRU0dxZlg4UFF1MkFiY3doME5mdUdYaitHVk1LMzRvcmRDN0FEeTg4ZStURmlQRktrRW9UcnBMSisrYkJQTC8wZ1ZZdFIxdTNGV3dYQWR0Ylg3U25paU5qZ0I5QmNTQlZRRmp5NWRGYUVyODFnak1UR2VPWHB6T2xMZUhWWmJFVUJCQkhEOENyUGJ4NlNQYXBxOHA1NVlCNS9IZkJ0VWpsSDdMa1JocGlBSWF6Z2hVdzRPMFZ6aVZ6enpVbHNnR091VElWdTdaODRvUDlvWjg5bGI5djIxbTcwSDB4L1ZqSXlGNU52b2JTemoyNXMzL3NxS2I1SEtYVHduVW5tTXBvcWxGZmwwajZXM1ZFQnhkdjh2Y2VRMWtaSWkyY1ZWbjNUK29tTkJLWFRkR0NQSS9UaWgyaWNWdFlQZ05IbENxUXBBK0c3ZHFBUTd4VEh6TEJuT2dMemU2THZuRkpRajBpZkt0dlNHNDNzVU82bmRUaS8zbHpta1orK2lIWmVZR3pIampKWnV5RFRRbEo2MUpOamVYUWpHMTliREFaNFZ3SDhJanBWOEUyRERBLzVDcEYwL1l5MTByTTdlT0t0K1JaTWFlc3pHbkRpeXoydHpRK0Z4ZjNrdFV3U1ZFbCtCcFQ2Y1NLSzVNaFFjWDJjMmlrcWpCbVZSNDBzSVhKMjV1VXB1Nko0L1liMzgzNE1iWT0=');
-  
-      await conector.Iniciar();
-  
-      conector.EstablecerEnfatizado(true);
-      conector.EstablecerTamañoFuente(1, 1);
-      conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
-      conector.EscribirTexto("Corte de Caja (Móvil)\n\n");
-      conector.EstablecerEnfatizado(false);
-      conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
-  
-      conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
-      conector.EscribirTexto(`Ubicación: ${session?.user?.location || ''}\n`);
-      conector.EscribirTexto(`Dispositivo: ${deviceId}\n\n`);
-  
-      conector.EscribirTexto("Efectivo:\n");
-      conector.EscribirTexto(`  Esperado: $${corteData.expectedCash.toFixed(2)}\n`);
-      conector.EscribirTexto(`  Real: $${corteData.actualCash.toFixed(2)}\n`);
-      conector.EscribirTexto(`  Diferencia: $${(corteData.actualCash - corteData.expectedCash).toFixed(2)}\n\n`);
-  
-      conector.EscribirTexto("Tarjeta:\n");
-      conector.EscribirTexto(`  Esperado: $${corteData.expectedCard.toFixed(2)}\n`);
-      conector.EscribirTexto(`  Real: $${corteData.actualCard.toFixed(2)}\n`);
-      conector.EscribirTexto(`  Diferencia: $${(corteData.actualCard - corteData.expectedCard).toFixed(2)}\n\n`);
-  
-      conector.EscribirTexto(`Total de Tickets: ${corteData.totalTickets}\n\n`);
-  
-      conector.EscribirTexto("Total:\n");
-      conector.EscribirTexto(`  Esperado: $${(corteData.expectedCash + corteData.expectedCard).toFixed(2)}\n`);
-      conector.EscribirTexto(`  Real: $${(corteData.actualCash + corteData.actualCard).toFixed(2)}\n`);
-      conector.EscribirTexto(`  Diferencia: $${((corteData.actualCash + corteData.actualCard) - (corteData.expectedCash + corteData.expectedCard)).toFixed(2)}\n`);
-  
-      conector.Corte(1);
-  
-      const resultado = await conector.imprimirEn(printerConfig.printerName);
-  
-      if (typeof resultado === 'object' && resultado !== null && 'error' in resultado) {
-        throw new Error(resultado.error);
-      } else if (resultado !== true) {
-        throw new Error('La impresión no se completó correctamente');
-      }
-  
-      toast.success('Ticket de corte impreso correctamente');
-    } catch (error) {
-      console.error('Error al imprimir el ticket de corte:', error);
-      toast.error('Error al imprimir el ticket de corte');
-    }
-  };
-
-  const confirmCorte = async () => {
-    setIsCorteLoading(true);
-    try {
-      const response = await fetch('/api/mobileCutoff', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          location: session?.user?.location || '',
-          deviceId,
-          actualCash: parseFloat(cashAmountCorte),
-          actualCard: parseFloat(cardAmountCorte)
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al realizar el corte móvil');
-      }
-
-      const data = await response.json();
-      setCorteResults(data.data);
-      await printCorteTicket(data.data);
-      toast.success('Corte móvil realizado exitosamente');
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error al realizar el corte móvil');
-    } finally {
-      setIsCorteLoading(false);
-      setShowCorteConfirmation(false);
-    }
-  };
-
-  const closeMobileCorteModal = () => {
-    setIsMobileCorteModalOpen(false);
-    setCashAmountCorte('');
-    setCardAmountCorte('');
-    setCorteResults(null);
-    setShowCorteConfirmation(false);
-  };
-
   return (
-    <div className="h-screen bg-background text-foreground p-4 flex flex-col overflow-hidden">
-      {/* Barra superior con información del dispositivo */}
-      {/* <div className="bg-primary text-primary-foreground p-2 mb-4 rounded-md">
-        <p>Dispositivo: {deviceId}</p>
-        <p>GPS: {gpsCoordinates ? `${gpsCoordinates.latitude}, ${gpsCoordinates.longitude}` : 'No disponible'}</p>
-      </div> */}
-
-      {/* Contenido principal */}
-      <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
+    <div className="h-screen bg-background text-foreground p-2 sm:p-4 flex flex-col overflow-hidden">
+      <div className="flex-grow flex flex-col sm:flex-row gap-4 overflow-hidden">
         {/* Columna izquierda */}
-        <div className="w-full md:w-1/2 pr-2 flex flex-col space-y-4 overflow-y-auto">
-          <Card className="flex-shrink-0 flex flex-col">
+        <div className="w-full sm:w-1/2 flex flex-col gap-4 overflow-y-auto">
+          <Card className="flex-shrink-0">
             <CardHeader>
               <CardTitle>Agregar productos</CardTitle>
             </CardHeader>
-            <CardContent className="flex-grow overflow-y-auto">
-              <div className="mb-4 mt-4 flex">
+            <CardContent>
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   type="text"
                   placeholder="Ingrese código de caja, código de producto o categoría"
@@ -792,53 +514,54 @@ const MobileSalesPage: React.FC = () => {
                   onChange={handleSearchTopChange}
                   onKeyDown={handleKeyPressTop}
                   className="flex-grow"
-                  ref={searchInputRef} 
+                  ref={searchInputRef}
                 />
                 <Button
                   onClick={handleSearchTop}
-                  className="ml-2"
+                  className="w-full sm:w-auto"
                   disabled={isUpdating}
                 >
                   {isUpdating ? 'Actualizando...' : 'Buscar'}
                 </Button>
               </div>
-              {selectedProduct && (
-              <div className={`border-2 ${isProductAvailable(selectedProduct) ? 'border-green-500' : 'border-red-500'} rounded-lg p-4 mb-4`}>
-                <MobileProductCard
-                  product={selectedProduct}
-                  quantity={quantity}
-                  unitType={unitType}
-                  onQuantityChange={handleQuantityChange}
-                  onUnitTypeChange={(value: 'pieces' | 'boxes') => {
+            </CardContent>
+          </Card>
+          
+          {selectedProduct && (
+            <div className={`border-2 ${isProductAvailable(selectedProduct) ? 'border-green-500' : 'border-red-500'} rounded-lg p-4`}>
+              <MobileProductCard
+                product={selectedProduct}
+                quantity={quantity}
+                unitType={unitType}
+                onQuantityChange={handleQuantityChange}
+                onUnitTypeChange={(value: 'pieces' | 'boxes') => {
                     setUnitType(value);
                     setQuantity(1);
-                  }}
-                  onAddToCart={handleAddToCart}
-                  remainingQuantity={getRemainingQuantity(selectedProduct)}
-                  maxQuantity={unitType === 'boxes' 
+                }}
+                onAddToCart={handleAddToCart}
+                remainingQuantity={getRemainingQuantity(selectedProduct)}
+                maxQuantity={unitType === 'boxes' 
                     ? Math.floor(getRemainingQuantity(selectedProduct) / selectedProduct.piecesPerBox)
                     : getRemainingQuantity(selectedProduct)}
                 />
-              </div>
-            )}
-            </CardContent>
-          </Card>
+            </div>
+          )}
         </div>
         
-{/* Columna derecha */}
-<div className="w-full md:w-1/2 pl-2 flex flex-col overflow-hidden mt-4 md:mt-0">
+        {/* Columna derecha */}
+        <div className="w-full sm:w-1/2 flex flex-col overflow-hidden">
           <Card className="flex-grow flex flex-col overflow-hidden">
-            <CardHeader className="flex-shrink-0">
+            <CardHeader>
               <CardTitle>Artículos en el carrito</CardTitle>
             </CardHeader>
             <CardContent className="flex-grow overflow-y-auto pb-20">
               {cart.length > 0 ? (
-                <div>
+                <div className="space-y-4">
                   {Object.entries(groupCartItems(cart)).map(([productId, items]) => {
                     const { boxes, loosePieces, totalPieces } = calculateProductTotals(items);
                     const appliedPrice = items[0].appliedPrice;
                     return (
-                      <div key={productId} className="mb-4 p-3 bg-gray-100 rounded-lg">
+                      <div key={productId} className="p-3 bg-gray-100 rounded-lg">
                         <h3 className="font-bold text-lg mb-2">{items[0].name}</h3>
                         <p>
                           {boxes > 0 && `${boxes} ${boxes === 1 ? 'caja' : 'cajas'} (${boxes * items[0].piecesPerBox} ${boxes * items[0].piecesPerBox === 1 ? 'pieza' : 'piezas'})`}
@@ -867,67 +590,40 @@ const MobileSalesPage: React.FC = () => {
               )}
             </CardContent>
           </Card>
-          {/* Total fijo */}
           {cart.length > 0 && (
-            <div className="fixed bottom-0 right-0 w-full md:w-[calc(50%-0.5rem)] mr-2 mb-2">
-              <Card>
+            <div className="fixed bottom-0 left-0 right-0 sm:left-auto sm:w-[calc(50%-1rem)] p-2 bg-background">
+                <Card>
                 <CardContent className="flex justify-between items-center p-4">
-                  <div className="text-xl font-bold">
+                    <div className="text-xl font-bold">
                     Total: ${calculateTotal().toFixed(2)}
-                  </div>
-                  <Button 
-                    onClick={handleOpenMobilePaymentModal}
+                    </div>
+                    <Button 
+                    onClick={handleOpenMobileConfirmModal}
                     className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    Enviar
-                  </Button>
+                    >
+                    Confirmar Pedido
+                    </Button>
                 </CardContent>
-              </Card>
+                </Card>
             </div>
-          )}
+            )}
         </div>
       </div>
 
       {/* Modales con Suspense */}
       <Suspense fallback={<div>Cargando...</div>}>
         <MobileConfirmModal
-          isOpen={isMobilePaymentModalOpen}
-          onClose={handleCloseMobilePaymentModal}
-          paymentType={paymentType}
-          amountPaid={amountPaid}
-          change={change}
-          totalAmount={calculateTotal()}
-          isLoading={isLoading}
-          onPaymentTypeChange={handlePaymentTypeChange}
-          onAmountPaidChange={handleAmountPaidChange}
-          onConfirmPayment={handlePayment}
+            isOpen={isMobileConfirmModalOpen}
+            onClose={handleCloseMobileConfirmModal}
+            paymentType={paymentType}
+            totalAmount={calculateTotal()}
+            isLoading={isLoading}
+            customerName={customerName}
+            onPaymentTypeChange={handlePaymentTypeChange}
+            onCustomerNameChange={handleCustomerNameChange}
+            onConfirm={handleConfirmOrder}
         />
-      </Suspense>
-
-      <Suspense fallback={<div>Cargando...</div>}>
-        <MobileCorteModal
-          isOpen={isMobileCorteModalOpen}
-          onClose={closeMobileCorteModal}
-          cashAmountCorte={cashAmountCorte}
-          cardAmountCorte={cardAmountCorte}
-          isCorteLoading={isCorteLoading}
-          corteResults={corteResults}
-          onCashAmountChange={(e) => setCashAmountCorte(e.target.value)}
-          onCardAmountChange={(e) => setCardAmountCorte(e.target.value)}
-          onCorte={handleCorte}
-        />
-      </Suspense>
-
-      <Suspense fallback={<div>Cargando...</div>}>
-        <CorteConfirmationModal
-          isOpen={showCorteConfirmation}
-          onClose={() => setShowCorteConfirmation(false)}
-          cashAmount={cashAmountCorte}
-          cardAmount={cardAmountCorte}
-          isCorteLoading={isCorteLoading}
-          onConfirm={confirmCorte}
-        />
-      </Suspense>
+        </Suspense>
 
       <Suspense fallback={<div>Cargando...</div>}>
         <PriceAdjustmentModal

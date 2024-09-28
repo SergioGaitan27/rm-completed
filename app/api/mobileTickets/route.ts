@@ -1,28 +1,43 @@
 // app/api/mobileTickets/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { processMobileTicket, getMobileTicketById, getMobileTicketsInRange, getMobileTicketStats } from '@/app/lib/actions/mobileTickets';
+import {processMobileTicket,
+        getMobileTicketById, 
+        getMobileTicketsInRange, 
+        getMobileTicketStats, 
+        createOrderTicket,
+        updateMobileTicket 
+    } from '@/app/lib/actions/mobileTickets';
 import moment from 'moment-timezone';
 
 const TIMEZONE = 'America/Mexico_City';
 
 export async function POST(req: NextRequest) {
     try {
-      const ticketData = await req.json();
-      // Ensure customerName is included in ticketData
-      if (!ticketData.customerName) {
-        ticketData.customerName = ''; // Set a default value if not provided
-      }
-      const { newTicket, updatedProducts } = await processMobileTicket(ticketData);
+      const data = await req.json();
+      const { action } = data;
   
-      return NextResponse.json({
-        success: true,
-        message: 'Ticket móvil procesado exitosamente',
-        data: {
-          ticket: newTicket,
-          updatedProducts
-        }
-      }, { status: 200 });
+      if (action === 'createOrder') {
+        const orderTicket = await createOrderTicket(data.orderData);
+        return NextResponse.json({
+          success: true,
+          message: 'Ticket de pedido creado exitosamente',
+          data: {
+            ticket: orderTicket
+          }
+        }, { status: 200 });
+      } else {
+        // Lógica existente para procesar tickets móviles
+        const { newTicket, updatedProducts } = await processMobileTicket(data);
+        return NextResponse.json({
+          success: true,
+          message: 'Ticket móvil procesado exitosamente',
+          data: {
+            ticket: newTicket,
+            updatedProducts
+          }
+        }, { status: 200 });
+      }
     } catch (error: unknown) {
       console.error("Error detallado:", error);
       if (error instanceof Error) {
@@ -79,3 +94,30 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, message: 'Ocurrió un error desconocido' }, { status: 500 });
   }
 }
+
+export async function PUT(req: NextRequest) {
+    try {
+      const data = await req.json();
+      const { ticketId, paymentStatus, fulfillmentStatus, paymentType, amountPaid, change } = data;
+  
+      const updatedTicket = await updateMobileTicket(ticketId, { 
+        paymentStatus, 
+        fulfillmentStatus, 
+        paymentType, 
+        amountPaid, 
+        change 
+      });
+  
+      return NextResponse.json({
+        success: true,
+        message: 'Ticket actualizado exitosamente',
+        data: updatedTicket
+      }, { status: 200 });
+    } catch (error: unknown) {
+      console.error("Error detallado:", error);
+      if (error instanceof Error) {
+        return NextResponse.json({ success: false, message: error.message }, { status: 400 });
+      }
+      return NextResponse.json({ success: false, message: 'Ocurrió un error desconocido' }, { status: 500 });
+    }
+  }
