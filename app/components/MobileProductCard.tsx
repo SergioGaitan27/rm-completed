@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { PlusIcon, MinusIcon } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger } from "@/app/components/ui/dialog";
 
 interface MobileProductCardProps {
   product: {
@@ -16,6 +17,7 @@ interface MobileProductCardProps {
     price1MinQty: number;
     price2MinQty: number;
     price3MinQty: number;
+    imageUrl: string; // Asegúrate de que tu modelo de producto incluya esta propiedad
   };
   quantity: number;
   unitType: 'pieces' | 'boxes';
@@ -36,6 +38,8 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
   remainingQuantity,
   maxQuantity
 }) => {
+  const [isImageOpen, setIsImageOpen] = useState(false);
+
   const handleIncrement = () => {
     if (quantity < maxQuantity) {
       onQuantityChange(quantity + 1);
@@ -59,7 +63,14 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
 
   return (
     <div className="p-4 bg-white shadow-md rounded-lg">
-      <h3 className="text-lg font-bold mb-2">{product.name}</h3>
+      <Dialog open={isImageOpen} onOpenChange={setIsImageOpen}>
+        <DialogTrigger asChild>
+          <h3 className="text-lg font-bold mb-2 cursor-pointer hover:text-blue-600">{product.name}</h3>
+        </DialogTrigger>
+        <DialogContent>
+          <img src={product.imageUrl} alt={product.name} className="w-full h-auto" />
+        </DialogContent>
+      </Dialog>
       <p className="text-sm mb-2">Código de producto: {product.productCode}</p>
       <p className="text-sm mb-2">Código de caja: {product.boxCode}</p>
       <p className="text-sm mb-2">Disponible: {remainingQuantity} piezas</p>

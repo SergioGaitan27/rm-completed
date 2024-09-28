@@ -529,8 +529,11 @@ const MobileSalesPage: React.FC = () => {
           
           {selectedProduct && (
             <div className={`border-2 ${isProductAvailable(selectedProduct) ? 'border-green-500' : 'border-red-500'} rounded-lg p-4`}>
-              <MobileProductCard
-                product={selectedProduct}
+                <MobileProductCard
+                product={{
+                    ...selectedProduct,
+                    imageUrl: selectedProduct.imageUrl || '/path/to/default-image.jpg' // Asegúrate de proporcionar una imagen por defecto
+                }}
                 quantity={quantity}
                 unitType={unitType}
                 onQuantityChange={handleQuantityChange}
@@ -545,7 +548,7 @@ const MobileSalesPage: React.FC = () => {
                     : getRemainingQuantity(selectedProduct)}
                 />
             </div>
-          )}
+            )}
         </div>
         
         {/* Columna derecha */}
