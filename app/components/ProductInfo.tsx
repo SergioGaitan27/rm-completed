@@ -16,10 +16,11 @@ interface ProductInfoProps {
   productInfoBottom: Product | null;
   getRemainingQuantity: (product: Product) => number;
   isProductAvailable: (product: Product) => boolean;
-  handleAddFromDetails: () => void;
+  handleAddFromDetails: (product: Product) => void;
   productSearchedFromBottom: boolean;
   calculateStockDisplay: (stockLocations: IStockLocation[], piecesPerBox: number) => any[];
   getCartQuantity: (productId: string) => number;
+  getTotalStockAcrossLocations: (product: Product) => number;
 }
 
 const ProductInfo: React.FC<ProductInfoProps> = ({
@@ -35,11 +36,19 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
   handleAddFromDetails,
   productSearchedFromBottom,
   calculateStockDisplay,
-  getCartQuantity
+  getCartQuantity,
+  getTotalStockAcrossLocations
 }) => {
 
-  const getAvailableQuantity = (product: Product) => {
-    const totalQuantity = getRemainingQuantity(product);
+
+  const getAvailableQuantityInLocation = (product: Product) => {
+    const locationQuantity = getRemainingQuantity(product);
+    const cartQuantity = getCartQuantity(product._id);
+    return locationQuantity - cartQuantity;
+  };
+
+  const getAvailableQuantityTotal = (product: Product) => {
+    const totalQuantity = getTotalStockAcrossLocations(product);
     const cartQuantity = getCartQuantity(product._id);
     return totalQuantity - cartQuantity;
   };
@@ -106,40 +115,52 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
               <p>Precio caja: ${productInfoBottom.price3.toFixed(2)} (Cantidad mínima: {productInfoBottom.price3MinQty})</p>
               {productInfoBottom.price4 && <p>Precio 4: ${productInfoBottom.price4.toFixed(2)}</p>}
               {productInfoBottom.price5 && <p>Precio 5: ${productInfoBottom.price5.toFixed(2)}</p>}
-              <p className="font-bold mt-2">
-                Cantidad disponible: {getAvailableQuantity(productInfoBottom)} piezas
-                {getCartQuantity(productInfoBottom._id) > 0 && 
-                  ` (${getCartQuantity(productInfoBottom._id)} en carrito)`}
-              </p>
-              <h4 className="font-bold mt-2">Ubicaciones de stock:</h4>
-              <ul>
+              
+              <div className="mt-4 p-2 bg-gray-100 rounded">
+            <p className="font-bold">
+              Inventario en tu ubicación: {getRemainingQuantity(productInfoBottom)} piezas
+            </p>
+            <p className={`font-bold ${getAvailableQuantityInLocation(productInfoBottom) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+              Disponible en tu ubicación: {getAvailableQuantityInLocation(productInfoBottom)} piezas
+            </p>
+            <p className="font-bold mt-2">
+              Inventario total en todas las ubicaciones: {getTotalStockAcrossLocations(productInfoBottom)} piezas
+            </p>
+            <p className="font-bold text-green-600">
+              Disponible para venta (total): {getAvailableQuantityTotal(productInfoBottom)} piezas
+            </p>
+            <p className="font-bold text-blue-600 mt-2">
+              Cantidad en carrito: {getCartQuantity(productInfoBottom._id)} piezas
+            </p>
+          </div>
+
+              {/* <h4 className="font-bold mt-4">Detalle por ubicaciones:</h4>
+              <ul className="mt-2">
                 {calculateStockDisplay(productInfoBottom.stockLocations, productInfoBottom.piecesPerBox).map((location, index) => (
-                  <li key={index}>
-                    {location.location}: 
+                  <li key={index} className="mb-1">
+                    <span className="font-semibold">{location.location}:</span> 
                     {location.boxes > 0 && ` ${location.boxes} ${location.boxes === 1 ? 'caja' : 'cajas'}`}
                     {location.boxes > 0 && location.loosePieces > 0 && ' y'}
                     {location.loosePieces > 0 && ` ${location.loosePieces} ${location.loosePieces === 1 ? 'pieza' : 'piezas'}`}
                     {' | Total: '}{location.total} {location.total === 1 ? 'pieza' : 'piezas'}
                   </li>
                 ))}
-              </ul>
+              </ul> */}
             </div>
           </div>
           {productSearchedFromBottom && (
             <Button 
-              onClick={handleAddFromDetails}
+              onClick={() => handleAddFromDetails(productInfoBottom)}
               className={`text-white px-4 py-2 rounded mt-4 w-full ${
-                isProductAvailable(productInfoBottom)
+                getAvailableQuantityTotal(productInfoBottom) > 0
                   ? 'bg-green-500 hover:bg-green-600' 
                   : 'bg-red-500 hover:bg-red-600 cursor-not-allowed'
               }`}
-              disabled={!isProductAvailable(productInfoBottom)}
+              disabled={getAvailableQuantityTotal(productInfoBottom) <= 0}
             >
-              {isProductAvailable(productInfoBottom)
-                ? 'Agregar producto' 
-                : productInfoBottom.availability
-                  ? 'Sin inventario disponible en tu ubicación'
-                  : 'Producto no disponible'}
+              {getAvailableQuantityTotal(productInfoBottom) > 0
+                ? 'Seleccionar producto' 
+                : 'Sin inventario disponible para venta'}
             </Button>
           )}
         </div>

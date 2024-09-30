@@ -1,25 +1,28 @@
+// MobileSalesPage.tsx
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback, lazy, Suspense  } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import MobileProductCard from '@/app/components/MobileProductCard'; 
 import ProductCard from '@/app/components/ProductCard'; 
 import { toast } from 'react-hot-toast';
-import ProductInfo from '@/app/components/ProductInfo';
-import ConectorPluginV3 from '@/app/utils/ConectorPluginV3';
 import { Product, CartItem, IBusinessInfo, IStockLocation } from '@/app/types/product';
 import PriceAdjustmentModal from '@/app/components/PriceAdjustmentModal';
+import ProductInfo from '@/app/components/ProductInfo';
+import ConectorPluginV3 from '@/app/utils/ConectorPluginV3';
 
+const MobileConfirmModal = lazy(() => import('@/app/components/MobileConfirmModal'));
 const PaymentModal = lazy(() => import('@/app/components/PaymentModal'));
 const CorteModal = lazy(() => import('@/app/components/CorteModal'));
 const CorteConfirmationModal = lazy(() => import('@/app/components/CorteConfirmationModal'));
 
 interface AdjustedCartItem extends CartItem {
     adjustedPrice?: number;
-  }
+}
 
 const groupCartItems = (cart: CartItem[]): Record<string, CartItem[]> => {
   return cart.reduce((acc, item) => {
@@ -55,8 +58,26 @@ const calculateProductTotals = (items: CartItem[]): {
   return { boxes, loosePieces, totalPieces };
 };
 
+const useDeviceType = () => {
+    const [isDesktop, setIsDesktop] = useState(true);
+  
+    useEffect(() => {
+      const handleResize = () => {
+        setIsDesktop(window.innerWidth >= 768); // Considera dispositivos con ancho >= 768px como desktop
+      };
+  
+      handleResize(); // Llamada inicial
+      window.addEventListener('resize', handleResize);
+  
+      return () => window.removeEventListener('resize', handleResize);
+    }, []);
+  
+    return isDesktop;
+  };
 
-const SalesPage: React.FC = () => {
+
+const MobileSalesPage: React.FC = () => {
+  const isDesktop = useDeviceType();
   const { data: session, status } = useSession();
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
@@ -65,25 +86,12 @@ const SalesPage: React.FC = () => {
   const [unitType, setUnitType] = useState<'pieces' | 'boxes'>('pieces');
   const [searchTermTop, setSearchTermTop] = useState('');
   const [searchTermBottom, setSearchTermBottom] = useState('');
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [productInfoBottom, setProductInfoBottom] = useState<Product | null>(null);
+  const [MobileProductInfoBottom, setMobileProductInfoBottom] = useState<Product | null>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
-  const [productSearchedFromBottom, setProductSearchedFromBottom] = useState(false);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [paymentType, setPaymentType] = useState<'cash' | 'card'>('cash');
-  const [amountPaid, setAmountPaid] = useState('');
-  const [change, setChange] = useState(0);
   const amountPaidInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [pluginConnected, setPluginConnected] = useState(false);
   const [businessInfo, setBusinessInfo] = useState<IBusinessInfo | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isCorteModalOpen, setIsCorteModalOpen] = useState(false);
-  const [cashAmountCorte, setCashAmountCorte] = useState('');
-  const [cardAmountCorte, setCardAmountCorte] = useState('');
-  const [corteResults, setCorteResults] = useState<any>(null);
-  const [isCorteLoading, setIsCorteLoading] = useState(false);
-  const [showCorteConfirmation, setShowCorteConfirmation] = useState(false);
   const [cart, setCart] = useState<CartItem[]>(() => {
     if (typeof window !== 'undefined') {
       const savedCart = localStorage.getItem('cart');
@@ -92,14 +100,150 @@ const SalesPage: React.FC = () => {
     return [];
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [deviceId, setDeviceId] = useState<string>('');
+  const [gpsCoordinates, setGpsCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
+  const [isMobileConfirmModalOpen, setIsMobileConfirmModalOpen] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [paymentType, setPaymentType] = useState<'cash' | 'card'>('cash');
   const [isPriceAdjustmentModalOpen, setIsPriceAdjustmentModalOpen] = useState(false);
   const [cartUpdateTrigger, setCartUpdateTrigger] = useState(0);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isProductsLoaded, setIsProductsLoaded] = useState(false);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [productInfoBottom, setProductInfoBottom] = useState<Product | null>(null);
+  const [productSearchedFromBottom, setProductSearchedFromBottom] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [amountPaid, setAmountPaid] = useState('');
+  const [change, setChange] = useState(0);
+  const [isCorteModalOpen, setIsCorteModalOpen] = useState(false);
+  const [cashAmountCorte, setCashAmountCorte] = useState('');
+  const [cardAmountCorte, setCardAmountCorte] = useState('');
+  const [corteResults, setCorteResults] = useState<any>(null);
+  const [isCorteLoading, setIsCorteLoading] = useState(false);
+  const [showCorteConfirmation, setShowCorteConfirmation] = useState(false);
+  const [printerConfig, setPrinterConfig] = useState<{ printerName: string; paperSize: string }>({
+    printerName: '',
+    paperSize: '80mm',
+  });
+
+  useEffect(() => {
+    // Cargar la configuración de la impresora
+    const savedConfig = localStorage.getItem('printerConfig');
+    if (savedConfig) {
+      setPrinterConfig(JSON.parse(savedConfig));
+    }
+  }, []);
+
+  const printTicket = async (ticketId?: string) => {
+    if (!isDesktop) return; // Solo imprimir en modo escritorio
+
+    try {
+      const conector = new ConectorPluginV3(undefined, 'YmEwNzRiYWFfXzIwMjQtMDctMTBfXzIwMjQtMTAtMDgjIyMxUXJaS2xpWjVjbU01VEVmckg5Zm93RWxWOHVmQmhYNjVFQnE1akVFMzBZWG51QUs5YUd0U3Ayc2d0N2E0a1ZiOExEMm1EV2NnTjJhTWR0dDhObUw2bFBLTERGYjBXYkFpTTBBNjJTYlo5KzBLRUVLMzlFeEVLcVR5d2dEcWdsQzUvWlhxZCtxUC9aQ1RnL2M5UVhKRUxJRXVYOGVRU0dxZlg4UFF1MkFiY3doME5mdUdYaitHVk1LMzRvcmRDN0FEeTg4ZStURmlQRktrRW9UcnBMSisrYkJQTC8wZ1ZZdFIxdTNGV3dYQWR0Ylg3U25paU5qZ0I5QmNTQlZRRmp5NWRGYUVyODFnak1UR2VPWHB6T2xMZUhWWmJFVUJCQkhEOENyUGJ4NlNQYXBxOHA1NVlCNS9IZkJ0VWpsSDdMa1JocGlBSWF6Z2hVdzRPMFZ6aVZ6enpVbHNnR091VElWdTdaODRvUDlvWjg5bGI5djIxbTcwSDB4L1ZqSXlGNU52b2JTemoyNXMzL3NxS2I1SEtYVHduVW5tTXBvcWxGZmwwajZXM1ZFQnhkdjh2Y2VRMWtaSWkyY1ZWbjNUK29tTkJLWFRkR0NQSS9UaWgyaWNWdFlQZ05IbENxUXBBK0c3ZHFBUTd4VEh6TEJuT2dMemU2THZuRkpRajBpZkt0dlNHNDNzVU82bmRUaS8zbHpta1orK2lIWmVZR3pIampKWnV5RFRRbEo2MUpOamVYUWpHMTliREFaNFZ3SDhJanBWOEUyRERBLzVDcEYwL1l5MTByTTdlT0t0K1JaTWFlc3pHbkRpeXoydHpRK0Z4ZjNrdFV3U1ZFbCtCcFQ2Y1NLSzVNaFFjWDJjMmlrcWpCbVZSNDBzSVhKMjV1VXB1Nko0L1liMzgzNE1iWT0=');
+
+      await conector.Iniciar();
+      let anchoCaracteres;
+      switch (printerConfig.paperSize) {
+        case '58mm':
+          anchoCaracteres = 32;
+          break;
+        case '80mm':
+          anchoCaracteres = 48;
+          break;
+        case 'A4':
+          anchoCaracteres = 64;
+          break;
+        default:
+          anchoCaracteres = 48;
+      }
+
+      if (businessInfo) {
+        conector.EstablecerEnfatizado(true);
+        conector.EstablecerTamañoFuente(1, 1);
+        conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
+        conector.EscribirTexto(`${businessInfo.businessName}\n`);
+        conector.EstablecerEnfatizado(false);
+        conector.EscribirTexto(`${businessInfo.address}\n`);
+        conector.EscribirTexto(`Tel: ${businessInfo.phone}\n`);
+        conector.EscribirTexto(`RFC: ${businessInfo.taxId}\n`);
+        conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+      }
+
+      conector.EstablecerEnfatizado(true);
+      conector.EstablecerTamañoFuente(1, 1);
+      conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
+      if (ticketId) {
+        conector.EscribirTexto(`ID: ${ticketId}\n`);
+      }
+      conector.EstablecerEnfatizado(false);
+      conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+
+      cart.forEach(item => {
+        const totalPieces = item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity;
+        conector.EscribirTexto(`${item.name}\n`);
+        conector.EscribirTexto(`${totalPieces} pzs x $${item.appliedPrice.toFixed(2)} = $${(totalPieces * item.appliedPrice).toFixed(2)}\n`);
+      });
   
+      conector.EscribirTexto("\n");
+      conector.EscribirTexto(`Total: $${calculateTotal().toFixed(2)}\n`);
+      conector.EscribirTexto(`Método de pago: ${paymentType === 'cash' ? 'Efectivo' : 'Tarjeta'}\n`);
+      if (paymentType === 'cash') {
+        conector.EscribirTexto(`Monto pagado: $${amountPaid}\n`);
+        conector.EscribirTexto(`Cambio: $${change.toFixed(2)}\n`);
+      }
+
+      conector.Corte(1);
+    
+      const resultado = await conector.imprimirEn(printerConfig.printerName);
+      if (typeof resultado === 'object' && resultado !== null && 'error' in resultado) {
+        throw new Error(resultado.error);
+      } else if (resultado !== true) {
+        throw new Error('La impresión no se completó correctamente');
+      }
+
+      toast.success('Ticket impreso correctamente');
+    } catch (error) {
+      console.error('Error al imprimir:', error);
+      if (error instanceof Error) {
+        toast.error(`Error al imprimir el ticket: ${error.message}`);
+      } else {
+        toast.error('Error desconocido al imprimir el ticket');
+      }
+    }
+  };
+
+  useEffect(() => {
+    // Generar un ID de dispositivo único si no existe
+    const storedDeviceId = localStorage.getItem('deviceId');
+    if (storedDeviceId) {
+      setDeviceId(storedDeviceId);
+    } else {
+      const newDeviceId = `mobile-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      setDeviceId(newDeviceId);
+      localStorage.setItem('deviceId', newDeviceId);
+    }
+
+    // Obtener coordenadas GPS
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setGpsCoordinates({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Error obteniendo la ubicación:", error);
+          toast.error("No se pudo obtener la ubicación GPS");
+        }
+      );
+    } else {
+      toast.error("Geolocalización no soportada en este dispositivo");
+    }
+  }, []);
 
   const fetchBusinessInfo = useCallback(async () => {
     if (!session || !session.user?.location) return;
@@ -114,16 +258,11 @@ const SalesPage: React.FC = () => {
     } catch (error) {
       console.error('Error al obtener la información del negocio:', error);
     }
-}, [session]);
+  }, [session]);
 
   useEffect(() => {
     fetchBusinessInfo();
   }, [fetchBusinessInfo]);
-
-  useEffect(() => {
-    setPluginConnected(true);
-  }, []);
-
 
   const fetchProducts = useCallback(async () => {
     if (isProductsLoaded && !isInitialLoad) return;
@@ -183,6 +322,14 @@ const SalesPage: React.FC = () => {
     toast.success(`Precio ${priceType === 'regular' ? 'regular' : priceType} aplicado a todos los productos`);
   };
 
+  const handleCorteCommand = () => {
+    setIsCorteModalOpen(true);
+    setCashAmountCorte('');
+    setCardAmountCorte('');
+    setCorteResults(null);
+  };
+
+
   const handleSearchTop = () => {
     const searchTerm = searchTermTop.trim().toUpperCase();
     switch (searchTerm) {
@@ -190,7 +337,7 @@ const SalesPage: React.FC = () => {
         fetchProducts();
         break;
       case 'CORTE':
-        setIsCorteModalOpen(true);
+        handleCorteCommand();
         break;
       case 'P-MAYOREO':
         applyPriceToCart('mayoreo');
@@ -207,28 +354,82 @@ const SalesPage: React.FC = () => {
       case 'PEDIDO':
         window.open('/pedidos', '_blank');
         break;
-      default:
-        const result = products.find(product => 
-          product.boxCode.toLowerCase() === searchTerm.toLowerCase() ||
-          product.productCode.toLowerCase() === searchTerm.toLowerCase() ||
-          product.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      
-        if (result) {
-          setSelectedProduct(result);
-          setProductInfoBottom(result);
-          if (result.boxCode.toLowerCase() === searchTerm.toLowerCase()) {
-            setUnitType('boxes');
-          } else if (result.productCode.toLowerCase() === searchTerm.toLowerCase()) {
-            setUnitType('pieces');
-          }
-        } else {
-          setSelectedProduct(null);
-          setProductInfoBottom(null);
-          setProductSearchedFromBottom(false);
+        default:
+            const result = products.find(product => 
+              product.boxCode.toLowerCase() === searchTerm.toLowerCase() ||
+              product.productCode.toLowerCase() === searchTerm.toLowerCase() ||
+              product.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+          
+            if (result) {
+              setSelectedProduct(result);
+              setMobileProductInfoBottom(result);
+              // Actualizar ProductInfo al mismo tiempo
+              setProductInfoBottom(result);
+              setProductSearchedFromBottom(true);
+              if (result.boxCode.toLowerCase() === searchTerm.toLowerCase()) {
+                setUnitType('boxes');
+              } else if (result.productCode.toLowerCase() === searchTerm.toLowerCase()) {
+                setUnitType('pieces');
+              }
+            } else {
+              setSelectedProduct(null);
+              setMobileProductInfoBottom(null);
+              setProductInfoBottom(null);
+              setProductSearchedFromBottom(false);
+            }
         }
+        setSearchTermTop('');
+      };
+
+  const handleCorte = async () => {
+    const cashAmount = parseFloat(cashAmountCorte);
+    const cardAmount = parseFloat(cardAmountCorte);
+
+    if (isNaN(cashAmount) || isNaN(cardAmount)) {
+      toast.error('Por favor, ingrese montos válidos para efectivo y tarjeta.');
+      return;
     }
-    setSearchTermTop('');
+    setShowCorteConfirmation(true);
+  };
+
+  const confirmCorte = async () => {
+    setIsCorteLoading(true);
+    try {
+      const response = await fetch('/api/corte', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          location: session?.user?.location || '',
+          actualCash: parseFloat(cashAmountCorte),
+          actualCard: parseFloat(cardAmountCorte)
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al realizar el corte');
+      }
+
+      const data = await response.json();
+      setCorteResults(data.data);
+      toast.success('Corte realizado exitosamente');
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al realizar el corte');
+    } finally {
+      setIsCorteLoading(false);
+      setShowCorteConfirmation(false);
+    }
+  };
+
+  const closeCorteModal = () => {
+    setIsCorteModalOpen(false);
+    setCashAmountCorte('');
+    setCardAmountCorte('');
+    setCorteResults(null);
+    setShowCorteConfirmation(false);
   };
   
   const handleApplyPriceAdjustment = (adjustedCart: AdjustedCartItem[]) => {
@@ -266,15 +467,53 @@ const SalesPage: React.FC = () => {
     setProductSearchedFromBottom(true);
   };
 
-  const handleSearchTopChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTermTop(e.target.value.toUpperCase());
-  };
-
   const handleSearchBottomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const upperCaseValue = e.target.value.toUpperCase();
     setSearchTermBottom(upperCaseValue);
     handleSearchBottom(upperCaseValue);
   };
+
+  const handleKeyPressBottom = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (filteredProducts.length > 0) {
+        handleSelectProduct(filteredProducts[0]);
+      }
+    }
+  };
+
+  const handleAddFromDetails = (product: Product) => {
+    setSelectedProduct(product);
+    setUnitType('pieces');
+    setQuantity(1);
+    if (quantityInputRef.current) {
+      quantityInputRef.current.focus();
+    }
+  };
+
+  const clearProductInfo = () => {
+    setProductInfoBottom(null);
+    setSearchTermBottom('');
+    setProductSearchedFromBottom(false);
+  };
+
+  const calculateStockDisplay = (stockLocations: IStockLocation[], piecesPerBox: number) => {
+    return stockLocations.map(location => {
+      const quantity = Number(location.quantity);
+      const boxes = Math.floor(quantity / piecesPerBox);
+      const loosePieces = quantity % piecesPerBox;
+      return {
+        location: location.location,
+        boxes,
+        loosePieces,
+        total: quantity
+      };
+    });
+  };
+
+  const handleSearchTopChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTermTop(e.target.value.toUpperCase());
+  };
+
 
   const calculatePrice = (product: Product, totalQuantity: number): number => {
     if (totalQuantity >= product.price3MinQty) return product.price3;
@@ -282,6 +521,27 @@ const SalesPage: React.FC = () => {
     if (totalQuantity >= product.price1MinQty) return product.price1;
     return product.price1;
   };
+
+  const getCartQuantity = useCallback((productId: string): number => {
+    return cart.reduce((total, item) => {
+      if (item._id === productId) {
+        return total + (item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity);
+      }
+      return total;
+    }, 0);
+  }, [cart]);
+
+  const getTotalStockAcrossLocations = useCallback((product: Product): number => {
+    if (!product.stockLocations) {
+      console.warn(`El producto ${product.name} no tiene información de stock`);
+      return 0;
+    }
+  
+    return product.stockLocations.reduce((total, location) => {
+      const quantity = Number(location.quantity);
+      return total + (isNaN(quantity) ? 0 : quantity);
+    }, 0);
+  }, []);
 
   const getRemainingQuantity = useCallback((product: Product): number => {
     if (!session || !session.user?.location) {
@@ -306,24 +566,15 @@ const SalesPage: React.FC = () => {
     return 0;
   }, [session]);
 
-  const getCartQuantity = useCallback((productId: string): number => {
-    return cart.reduce((total, item) => {
-      if (item._id === productId) {
-        return total + (item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity);
-      }
-      return total;
-    }, 0);
-  }, [cart]);
-
   const handleAddToCart = () => {
     if (selectedProduct) {
-      const remainingQuantity = getRemainingQuantity(selectedProduct);
+      const totalStockAcrossLocations = getTotalStockAcrossLocations(selectedProduct);
       const quantityToAdd = unitType === 'boxes' ? quantity * selectedProduct.piecesPerBox : quantity;
       const currentCartQuantity = getCartQuantity(selectedProduct._id);
       const totalQuantityAfterAdding = currentCartQuantity + quantityToAdd;
   
-      if (totalQuantityAfterAdding > remainingQuantity) {
-        toast.error(`No hay suficiente inventario. Cantidad disponible: ${remainingQuantity - currentCartQuantity} piezas.`);
+      if (totalQuantityAfterAdding > totalStockAcrossLocations) {
+        toast.error(`La cantidad excede el inventario total. Cantidad disponible: ${totalStockAcrossLocations - currentCartQuantity} piezas.`);
         return;
       }
   
@@ -365,6 +616,10 @@ const SalesPage: React.FC = () => {
       setUnitType('pieces');
       toast.success('Producto añadido al carrito');
   
+      // Actualizar ProductInfo después de agregar al carrito
+      setProductInfoBottom(selectedProduct);
+      setProductSearchedFromBottom(true);
+  
       if (searchInputRef.current) {
         searchInputRef.current.focus();
       }
@@ -373,10 +628,10 @@ const SalesPage: React.FC = () => {
 
   const handleQuantityChange = (newQuantity: number) => {
     if (selectedProduct) {
-      const remainingQuantity = getRemainingQuantity(selectedProduct);
+      const totalStockAcrossLocations = getTotalStockAcrossLocations(selectedProduct);
       const maxQuantity = unitType === 'boxes' 
-        ? Math.floor(remainingQuantity / selectedProduct.piecesPerBox)
-        : remainingQuantity;
+        ? Math.floor(totalStockAcrossLocations / selectedProduct.piecesPerBox)
+        : totalStockAcrossLocations;
   
       if (newQuantity > maxQuantity) {
         toast.error(`La cantidad máxima disponible es ${maxQuantity} ${unitType === 'boxes' ? 'cajas' : 'piezas'}.`);
@@ -408,180 +663,104 @@ const SalesPage: React.FC = () => {
     }
   };
 
-  const handleKeyPressBottom = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      if (filteredProducts.length > 0) {
-        handleSelectProduct(filteredProducts[0]);
-      }
-    }
+  const isProductAvailable = (product: Product): boolean => {
+    return product.availability && getRemainingQuantity(product) > 0;
   };
 
-  const handleAddFromDetails = () => {
-    if (productInfoBottom) {
-      setSelectedProduct(productInfoBottom);
-      setUnitType('pieces');
-      setQuantity(1);
-      clearProductInfo();
-      if (quantityInputRef.current) {
-        quantityInputRef.current.focus();
-      }
-    }
+  const handleCustomerNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCustomerName(e.target.value);
+  };
+  
+  const handlePaymentTypeChange = (type: 'cash' | 'card') => {
+    setPaymentType(type);
+  };
+  
+  const handleOpenMobileConfirmModal = () => {
+    setIsMobileConfirmModalOpen(true);
+    setCustomerName('');
+    setPaymentType('cash');
+  };
+  
+  const handleCloseMobileConfirmModal = () => {
+    setIsMobileConfirmModalOpen(false);
   };
 
-  const clearProductInfo = () => {
-    setProductInfoBottom(null);
-    setSearchTermBottom('');
-    setProductSearchedFromBottom(false);
-  };
-
-  const calculateStockDisplay = (stockLocations: IStockLocation[], piecesPerBox: number) => {
-    return stockLocations.map(location => {
-      const quantity = Number(location.quantity);
-      const boxes = Math.floor(quantity / piecesPerBox);
-      const loosePieces = quantity % piecesPerBox;
-      return {
-        location: location.location,
-        boxes,
-        loosePieces,
-        total: quantity
-      };
-    });
-  };
-
-  const [printerConfig, setPrinterConfig] = useState<{ printerName: string; paperSize: string }>({
-    printerName: '',
-    paperSize: '80mm',
-  });
-
-  useEffect(() => {
-    // Cargar la configuración de la impresora
-    const savedConfig = localStorage.getItem('printerConfig');
-    if (savedConfig) {
-      setPrinterConfig(JSON.parse(savedConfig));
-    }
-  }, []);
-
-  // Modificar la función printTicket para usar la configuración
-  const printTicket = async (ticketId?: string) => {
-    if (!pluginConnected) {
-      toast.error('El plugin de impresión no está conectado');
+  const handleConfirmOrder = async () => {
+    if (!session || !session.user?.location) {
+      toast.error('No se pudo obtener la ubicación del usuario');
       return;
     }
+    setIsLoading(true);
+  
+    const orderData = {
+      action: 'createOrder',
+      orderData: {
+        items: cart.map(item => ({
+          productId: item._id,
+          productName: item.name,
+          quantity: item.quantity,
+          unitType: item.unitType,
+          pricePerUnit: item.appliedPrice,
+        })),
+        totalAmount: calculateTotal(),
+        paymentType,
+        location: session.user.location,
+        deviceId,
+        gpsCoordinates,
+        employeeId: session.user.id,
+        customerName: customerName.trim()
+      }
+    };
   
     try {
-      const conector = new ConectorPluginV3(undefined, 'YmEwNzRiYWFfXzIwMjQtMDctMTBfXzIwMjQtMTAtMDgjIyMxUXJaS2xpWjVjbU01VEVmckg5Zm93RWxWOHVmQmhYNjVFQnE1akVFMzBZWG51QUs5YUd0U3Ayc2d0N2E0a1ZiOExEMm1EV2NnTjJhTWR0dDhObUw2bFBLTERGYjBXYkFpTTBBNjJTYlo5KzBLRUVLMzlFeEVLcVR5d2dEcWdsQzUvWlhxZCtxUC9aQ1RnL2M5UVhKRUxJRXVYOGVRU0dxZlg4UFF1MkFiY3doME5mdUdYaitHVk1LMzRvcmRDN0FEeTg4ZStURmlQRktrRW9UcnBMSisrYkJQTC8wZ1ZZdFIxdTNGV3dYQWR0Ylg3U25paU5qZ0I5QmNTQlZRRmp5NWRGYUVyODFnak1UR2VPWHB6T2xMZUhWWmJFVUJCQkhEOENyUGJ4NlNQYXBxOHA1NVlCNS9IZkJ0VWpsSDdMa1JocGlBSWF6Z2hVdzRPMFZ6aVZ6enpVbHNnR091VElWdTdaODRvUDlvWjg5bGI5djIxbTcwSDB4L1ZqSXlGNU52b2JTemoyNXMzL3NxS2I1SEtYVHduVW5tTXBvcWxGZmwwajZXM1ZFQnhkdjh2Y2VRMWtaSWkyY1ZWbjNUK29tTkJLWFRkR0NQSS9UaWgyaWNWdFlQZ05IbENxUXBBK0c3ZHFBUTd4VEh6TEJuT2dMemU2THZuRkpRajBpZkt0dlNHNDNzVU82bmRUaS8zbHpta1orK2lIWmVZR3pIampKWnV5RFRRbEo2MUpOamVYUWpHMTliREFaNFZ3SDhJanBWOEUyRERBLzVDcEYwL1l5MTByTTdlT0t0K1JaTWFlc3pHbkRpeXoydHpRK0Z4ZjNrdFV3U1ZFbCtCcFQ2Y1NLSzVNaFFjWDJjMmlrcWpCbVZSNDBzSVhKMjV1VXB1Nko0L1liMzgzNE1iWT0=');
+      const response = await fetch('/api/mobileTickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
   
-      await conector.Iniciar();
-      let anchoCaracteres;
-      switch (printerConfig.paperSize) {
-        case '58mm':
-          anchoCaracteres = 32;
-          break;
-        case '80mm':
-          anchoCaracteres = 48;
-          break;
-        case 'A4':
-          anchoCaracteres = 64;
-          break;
-        default:
-          anchoCaracteres = 48;
-          console.warn(`Tamaño de papel desconocido: ${printerConfig.paperSize}. Usando ancho por defecto.`);
+      if (!response.ok) {
+        throw new Error('Error al crear el ticket de pedido');
       }
-      if (businessInfo) {
-        conector.EstablecerEnfatizado(true);
-        conector.EstablecerTamañoFuente(1, 1);
-        conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
-        conector.EscribirTexto(`${businessInfo.businessName}\n`);
-        conector.EstablecerEnfatizado(false);
-        conector.EscribirTexto(`${businessInfo.address}\n`);
-        conector.EscribirTexto(`Tel: ${businessInfo.phone}\n`);
-        conector.EscribirTexto(`RFC: ${businessInfo.taxId}\n`);
-        conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-      }
-
-        // Añadir fecha y hora
-
-        conector.EstablecerEnfatizado(true);
-        conector.EstablecerTamañoFuente(1, 1);
-        conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
-        if (ticketId) {
-          conector.EscribirTexto(`ID: ${ticketId}\n`);
-        }
-        conector.EstablecerEnfatizado(false);
-        conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-        cart.forEach(item => {
-          const totalPieces = item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity;
-          conector.EscribirTexto(`${item.name}\n`);
-          conector.EscribirTexto(`${totalPieces} pzs x $${item.appliedPrice.toFixed(2)} = $${(totalPieces * item.appliedPrice).toFixed(2)}\n`);
-        });
-    
-        conector.EscribirTexto("\n");
-        conector.EscribirTexto(`Total: $${calculateTotal().toFixed(2)}\n`);
-        conector.EscribirTexto(`Método de pago: ${paymentType === 'cash' ? 'Efectivo' : 'Tarjeta'}\n`);
-        if (paymentType === 'cash') {
-          conector.EscribirTexto(`Monto pagado: $${amountPaid}\n`);
-          conector.EscribirTexto(`Cambio: $${change.toFixed(2)}\n`);
-        }
-
-    conector.Corte(1);
+  
+      const result = await response.json();
+      console.log('Orden confirmada:', result);
       
-      const resultado = await conector.imprimirEn(printerConfig.printerName);
-      if (typeof resultado === 'object' && resultado !== null && 'error' in resultado) {
-        throw new Error(resultado.error);
-      } else if (resultado !== true) {
-        throw new Error('La impresión no se completó correctamente');
-      }
+      // Vaciar el carrito
+      setCart([]);
+      localStorage.removeItem('cart');
   
-      toast.success('Ticket impreso correctamente');
-      if (searchInputRef.current) {
-        searchInputRef.current.focus();
-      }
+      // Redirigir a la página de pago con el ID del ticket
+      router.push(`/accionesMobile?ticketId=${result.data.ticket.ticketId}`);
+  
+      handleCloseMobileConfirmModal();
+      toast.success('Pedido confirmado. 🎉');
     } catch (error) {
-      console.error('Error al imprimir:', error);
-      if (error instanceof Error) {
-        toast.error(`Error al imprimir el ticket: ${error.message}`);
-      } else {
-        toast.error('Error desconocido al imprimir el ticket');
-      }
+      console.error('Error al confirmar el pedido:', error);
+      toast.error('Error al confirmar el pedido');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleOpenPaymentModal = () => {
-    setIsPaymentModalOpen(true);
-    setAmountPaid('');
-    setChange(0);
-    setPaymentType('cash');
-  };
-
-  useEffect(() => {
-    if (isPaymentModalOpen && paymentType === 'cash') {
-      const timeoutId = setTimeout(() => {
-        amountPaidInputRef.current?.focus();
-      }, 100);
-  
-      return () => clearTimeout(timeoutId);
+    if (isDesktop) {
+      setIsPaymentModalOpen(true);
+      setAmountPaid('');
+      setChange(0);
+      setPaymentType('cash');
+    } else {
+      handleOpenMobileConfirmModal();
     }
-  }, [isPaymentModalOpen, paymentType]);
+  };
 
   const handleClosePaymentModal = () => {
     setIsPaymentModalOpen(false);
     setPaymentType('cash');
     setAmountPaid('');
     setChange(0);
-  };
-
-  const handlePaymentTypeChange = (value: 'cash' | 'card') => {
-    setPaymentType(value);
-    if (value === 'card') {
-      setAmountPaid(calculateTotal().toFixed(2));
-      setChange(0);
-    } else {
-      setAmountPaid('');
-      setChange(0); 
-      setTimeout(() => {
-        amountPaidInputRef.current?.focus();
-      }, 0);
-    }
   };
 
   const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -593,345 +772,300 @@ const SalesPage: React.FC = () => {
     setChange(paid - total);
   };
 
-  const isProductAvailable = (product: Product): boolean => {
-    return product.availability && getRemainingQuantity(product) > 0;
-  };
-
   const handlePayment = async () => {
     if (!session || !session.user?.location) {
       toast.error('No se pudo obtener la ubicación del usuario');
       return;
-  }
+    }
     setIsLoading(true);
 
     const ticketData = {
-    items: cart.map(item => ({
-      productId: item._id,
-      productName: item.name,
-      quantity: item.quantity,
-      unitType: item.unitType,
-      pricePerUnit: item.appliedPrice,
-      total: item.appliedPrice * item.quantity * (item.unitType === 'boxes' ? item.piecesPerBox : 1)
-    })),
-    totalAmount: calculateTotal(),
-    paymentType,
-    amountPaid: parseFloat(amountPaid),
-    change,
-    location: session.user?.location
-  };
+      items: cart.map(item => ({
+        productId: item._id,
+        productName: item.name,
+        quantity: item.quantity,
+        unitType: item.unitType,
+        pricePerUnit: item.appliedPrice,
+        total: item.appliedPrice * item.quantity * (item.unitType === 'boxes' ? item.piecesPerBox : 1)
+      })),
+      totalAmount: calculateTotal(),
+      paymentType,
+      amountPaid: parseFloat(amountPaid),
+      change,
+      location: session.user?.location
+    };
 
-  try {
-    const response = await fetch('/api/tickets', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(ticketData),
-    });
-  
-    if (!response.ok) {
-      throw new Error('Error al guardar el ticket');
-    }
-  
-    const result = await response.json();
-    
-    if (result.success && result.data) {
-      const { ticket, updatedProducts } = result.data;
-      
-      if (updatedProducts && Array.isArray(updatedProducts)) {
-        setProducts(prevProducts => {
-          const newProducts = [...prevProducts];
-          updatedProducts.forEach((updatedProduct: Product) => {
-            const index = newProducts.findIndex(p => p._id === updatedProduct._id);
-            if (index !== -1) {
-              newProducts[index] = updatedProduct;
-            }
-          });
-          return newProducts;
-        });
-      } else {
-        console.warn('No se recibieron productos actualizados del servidor');
-      }
-  
-      // Utiliza ticket si necesitas acceder a la información del ticket
-      await printTicket(ticket?.ticketId);
-      handleClosePaymentModal();
-      setCart([]);
-      toast.success('Pago procesado e impreso exitosamente');
-      setProductInfoBottom(null);
-      setSearchTermBottom('');
-      if (searchInputRef.current) {
-        searchInputRef.current.focus();
-      }
-    } else {
-      throw new Error(result.message || 'Error desconocido al procesar el ticket');
-    }
-  } catch (error) {
-    console.error('Error al procesar el pago o imprimir:', error);
-    toast.error('Error al procesar el pago o imprimir el ticket');
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  const handleCorte = async () => {
-    const cashAmount = parseFloat(cashAmountCorte);
-    const cardAmount = parseFloat(cardAmountCorte);
-
-    if (isNaN(cashAmount) || isNaN(cardAmount)) {
-      toast.error('Por favor, ingrese montos válidos para efectivo y tarjeta.');
-      return;
-    }
-    setShowCorteConfirmation(true);
-  };
-
-  const printCorteTicket = async (corteData: any) => {
-    if (!pluginConnected) {
-      toast.error('El plugin de impresión no está conectado');
-      return;
-    }
-  
     try {
-      const conector = new ConectorPluginV3(undefined, 'YmEwNzRiYWFfXzIwMjQtMDctMTBfXzIwMjQtMTAtMDgjIyMxUXJaS2xpWjVjbU01VEVmckg5Zm93RWxWOHVmQmhYNjVFQnE1akVFMzBZWG51QUs5YUd0U3Ayc2d0N2E0a1ZiOExEMm1EV2NnTjJhTWR0dDhObUw2bFBLTERGYjBXYkFpTTBBNjJTYlo5KzBLRUVLMzlFeEVLcVR5d2dEcWdsQzUvWlhxZCtxUC9aQ1RnL2M5UVhKRUxJRXVYOGVRU0dxZlg4UFF1MkFiY3doME5mdUdYaitHVk1LMzRvcmRDN0FEeTg4ZStURmlQRktrRW9UcnBMSisrYkJQTC8wZ1ZZdFIxdTNGV3dYQWR0Ylg3U25paU5qZ0I5QmNTQlZRRmp5NWRGYUVyODFnak1UR2VPWHB6T2xMZUhWWmJFVUJCQkhEOENyUGJ4NlNQYXBxOHA1NVlCNS9IZkJ0VWpsSDdMa1JocGlBSWF6Z2hVdzRPMFZ6aVZ6enpVbHNnR091VElWdTdaODRvUDlvWjg5bGI5djIxbTcwSDB4L1ZqSXlGNU52b2JTemoyNXMzL3NxS2I1SEtYVHduVW5tTXBvcWxGZmwwajZXM1ZFQnhkdjh2Y2VRMWtaSWkyY1ZWbjNUK29tTkJLWFRkR0NQSS9UaWgyaWNWdFlQZ05IbENxUXBBK0c3ZHFBUTd4VEh6TEJuT2dMemU2THZuRkpRajBpZkt0dlNHNDNzVU82bmRUaS8zbHpta1orK2lIWmVZR3pIampKWnV5RFRRbEo2MUpOamVYUWpHMTliREFaNFZ3SDhJanBWOEUyRERBLzVDcEYwL1l5MTByTTdlT0t0K1JaTWFlc3pHbkRpeXoydHpRK0Z4ZjNrdFV3U1ZFbCtCcFQ2Y1NLSzVNaFFjWDJjMmlrcWpCbVZSNDBzSVhKMjV1VXB1Nko0L1liMzgzNE1iWT0=');
-  
-      await conector.Iniciar();
-  
-      conector.EstablecerEnfatizado(true);
-      conector.EstablecerTamañoFuente(1, 1);
-      conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
-      conector.EscribirTexto("Corte de Caja\n\n");
-      conector.EstablecerEnfatizado(false);
-      conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
-  
-      conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
-      conector.EscribirTexto(`Ubicación: ${session?.user?.location || ''}\n\n`);
-  
-      conector.EscribirTexto("Efectivo:\n");
-      conector.EscribirTexto(`  Esperado: $${corteData.expectedCash.toFixed(2)}\n`);
-      conector.EscribirTexto(`  Real: $${corteData.actualCash.toFixed(2)}\n`);
-      conector.EscribirTexto(`  Diferencia: $${(corteData.actualCash - corteData.expectedCash).toFixed(2)}\n\n`);
-  
-      conector.EscribirTexto("Tarjeta:\n");
-      conector.EscribirTexto(`  Esperado: $${corteData.expectedCard.toFixed(2)}\n`);
-      conector.EscribirTexto(`  Real: $${corteData.actualCard.toFixed(2)}\n`);
-      conector.EscribirTexto(`  Diferencia: $${(corteData.actualCard - corteData.expectedCard).toFixed(2)}\n\n`);
-  
-      conector.EscribirTexto(`Total de Tickets: ${corteData.totalTickets}\n\n`);
-  
-      conector.EscribirTexto("Total:\n");
-      conector.EscribirTexto(`  Esperado: $${(corteData.expectedCash + corteData.expectedCard).toFixed(2)}\n`);
-      conector.EscribirTexto(`  Real: $${(corteData.actualCash + corteData.actualCard).toFixed(2)}\n`);
-      conector.EscribirTexto(`  Diferencia: $${((corteData.actualCash + corteData.actualCard) - (corteData.expectedCash + corteData.expectedCard)).toFixed(2)}\n`);
-  
-      conector.Corte(1);
-  
-      const resultado = await conector.imprimirEn(printerConfig.printerName);
-  
-      if (typeof resultado === 'object' && resultado !== null && 'error' in resultado) {
-        throw new Error(resultado.error);
-      } else if (resultado !== true) {
-        throw new Error('La impresión no se completó correctamente');
-      }
-  
-      toast.success('Ticket de corte impreso correctamente');
-    } catch (error) {
-      console.error('Error al imprimir el ticket de corte:', error);
-      toast.error('Error al imprimir el ticket de corte');
-    }
-  };
-
-  const confirmCorte = async () => {
-    setIsCorteLoading(true);
-    try {
-      const response = await fetch('/api/corte', {
+      const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          location: session?.user?.location || '',
-          actualCash: parseFloat(cashAmountCorte),
-          actualCard: parseFloat(cardAmountCorte)
-        }),
+        body: JSON.stringify(ticketData),
       });
-
+    
       if (!response.ok) {
-        throw new Error('Error al realizar el corte');
+        throw new Error('Error al guardar el ticket');
       }
+    
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const { ticket, updatedProducts } = result.data;
+        
+        if (updatedProducts && Array.isArray(updatedProducts)) {
+          setProducts(prevProducts => {
+            const newProducts = [...prevProducts];
+            updatedProducts.forEach((updatedProduct: Product) => {
+              const index = newProducts.findIndex(p => p._id === updatedProduct._id);
+              if (index !== -1) {
+                newProducts[index] = updatedProduct;
+              }
+            });
+            return newProducts;
+          });
+        } else {
+          console.warn('No se recibieron productos actualizados del servidor');
+        }
+    
+        if (isDesktop) {
+          await printTicket(ticket?.ticketId);
+        }
 
-      const data = await response.json();
-      setCorteResults(data.data);
-      await printCorteTicket(data.data);
-      toast.success('Corte realizado exitosamente');
+        handleClosePaymentModal();
+        setCart([]);
+        toast.success('Pago procesado exitosamente');
+        setProductInfoBottom(null);
+        setSearchTermBottom('');
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      } else {
+        throw new Error(result.message || 'Error desconocido al procesar el ticket');
+      }
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error al realizar el corte');
+      console.error('Error al procesar el pago o imprimir:', error);
+      toast.error('Error al procesar el pago o imprimir el ticket');
     } finally {
-      setIsCorteLoading(false);
-      setShowCorteConfirmation(false);
+      setIsLoading(false);
     }
   };
 
-  const closeCorteModal = () => {
-    setIsCorteModalOpen(false);
-    setCashAmountCorte('');
-    setCardAmountCorte('');
-    setCorteResults(null);
-    setShowCorteConfirmation(false);
+  const handleAddToProductInfo = () => {
+    if (selectedProduct) {
+      setProductInfoBottom(selectedProduct);
+      setProductSearchedFromBottom(true);
+      // No añadimos al carrito aquí, solo actualizamos ProductInfo
+      toast.success('Producto seleccionado para revisión');
+
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
+    }
   };
 
   return (
-    <div className="h-screen bg-background text-foreground p-4 flex overflow-hidden">
-      {/* Columna izquierda */}
-      <div className="w-1/2 pr-2 flex flex-col space-y-4">
-        <Card className="flex-shrink-0 flex flex-col">
-          <CardHeader>
-            <CardTitle>Agregar productos</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-grow overflow-y-auto">
-            <div className="mb-4 mt-4 flex">
-              <Input
-                type="text"
-                placeholder="Ingrese código de caja, código de producto o categoría"
-                value={searchTermTop}
-                onChange={handleSearchTopChange}
-                onKeyDown={handleKeyPressTop}
-                className="flex-grow"
-                ref={searchInputRef} 
-              />
-              <Button
-                onClick={handleSearchTop}
-                className="ml-2"
-                disabled={isUpdating}
-              >
-                {isUpdating ? 'Actualizando...' : 'Buscar'}
-              </Button>
-            </div>
-            {selectedProduct && (
-            <div className={`border-2 ${isProductAvailable(selectedProduct) ? 'border-green-500' : 'border-red-500'} rounded-lg p-4 mb-4`}>
-              <ProductCard
-                product={selectedProduct}
-                quantity={quantity}
-                unitType={unitType}
-                onQuantityChange={handleQuantityChange}
-                onUnitTypeChange={(value: 'pieces' | 'boxes') => {
-                  setUnitType(value);
-                  setQuantity(1);
-                }}
-                onAddToCart={handleAddToCart}
-                remainingQuantity={getRemainingQuantity(selectedProduct)}
-                maxQuantity={unitType === 'boxes' 
-                  ? Math.floor(getRemainingQuantity(selectedProduct) / selectedProduct.piecesPerBox)
-                  : getRemainingQuantity(selectedProduct)}
-              />
+    <div className="h-screen bg-background text-foreground p-2 sm:p-4 flex flex-col overflow-hidden">
+      <div className="flex-grow flex flex-col sm:flex-row gap-4 overflow-hidden">
+        {/* Columna izquierda */}
+        <div className="w-full sm:w-1/2 flex flex-col gap-2 overflow-y-auto">
+          <Card className="flex-shrink-0">
+            <CardHeader>
+              <CardTitle>Agregar productos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  type="text"
+                  placeholder="Ingrese código de caja, código de producto o categoría"
+                  value={searchTermTop}
+                  onChange={handleSearchTopChange}
+                  onKeyDown={handleKeyPressTop}
+                  className="flex-grow"
+                  ref={searchInputRef}
+                />
+                <Button
+                  onClick={handleSearchTop}
+                  className="w-full sm:w-auto"
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? 'Actualizando...' : 'Buscar'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          
+          
+          {selectedProduct && (
+            <div className={`border-2 ${isProductAvailable(selectedProduct) ? 'border-green-500' : 'border-red-500'} rounded-lg p-4`}>
+              {isDesktop ? (
+                <ProductCard
+                  product={selectedProduct}
+                  quantity={quantity}
+                  unitType={unitType}
+                  onQuantityChange={handleQuantityChange}
+                  onUnitTypeChange={(value: 'pieces' | 'boxes') => {
+                    setUnitType(value);
+                    setQuantity(0);
+                  }}
+                  onAddToCart={handleAddToCart}
+                  remainingQuantity={getRemainingQuantity(selectedProduct)}
+                  totalStockAcrossLocations={getTotalStockAcrossLocations(selectedProduct)}
+                  maxQuantity={unitType === 'boxes' 
+                    ? Math.floor(getTotalStockAcrossLocations(selectedProduct) / selectedProduct.piecesPerBox)
+                    : getTotalStockAcrossLocations(selectedProduct)}
+                />
+              ) : (
+                <MobileProductCard
+                  product={{
+                    ...selectedProduct,
+                    imageUrl: selectedProduct.imageUrl || '/path/to/default-image.jpg'
+                  }}
+                  quantity={quantity}
+                  unitType={unitType}
+                  onQuantityChange={handleQuantityChange}
+                  onUnitTypeChange={(value: 'pieces' | 'boxes') => {
+                    setUnitType(value);
+                    setQuantity(0);
+                  }}
+                  onAddToCart={handleAddToCart}
+                  remainingQuantity={getRemainingQuantity(selectedProduct)}
+                  totalStockAcrossLocations={getTotalStockAcrossLocations(selectedProduct)}
+                  maxQuantity={unitType === 'boxes' 
+                    ? Math.floor(getTotalStockAcrossLocations(selectedProduct) / selectedProduct.piecesPerBox)
+                    : getTotalStockAcrossLocations(selectedProduct)}
+                  getCartQuantity={getCartQuantity} 
+                />
+              )}
             </div>
           )}
-          </CardContent>
-        </Card>
-       
-        <Card className="flex-grow overflow-hidden flex flex-col">
-          <CardHeader className="flex-shrink-0">
-            <CardTitle>Información de productos</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-grow overflow-y-auto">
-            <ProductInfo
-              searchTermBottom={searchTermBottom}
-              handleSearchBottomChange={handleSearchBottomChange}
-              handleKeyPressBottom={handleKeyPressBottom}
-              handleSearchBottom={handleSearchBottom}
-              filteredProducts={filteredProducts}
-              handleSelectProduct={handleSelectProduct}
-              productInfoBottom={productInfoBottom}
-              isProductAvailable={isProductAvailable}
-              handleAddFromDetails={handleAddFromDetails}
-              productSearchedFromBottom={productSearchedFromBottom}
-              calculateStockDisplay={calculateStockDisplay}
-              getRemainingQuantity={getRemainingQuantity}
-              getCartQuantity={getCartQuantity}
-            />
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* Columna derecha */}
-      <div className="w-1/2 pl-2 flex flex-col overflow-hidden">
-        <Card className="flex-grow flex flex-col overflow-hidden">
-          <CardHeader className="flex-shrink-0">
-            <CardTitle>Artículos en el carrito</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-grow overflow-y-auto pb-20">
-            {cart.length > 0 ? (
-              <div>
-                {Object.entries(groupCartItems(cart)).map(([productId, items]) => {
-                  const { boxes, loosePieces, totalPieces } = calculateProductTotals(items);
-                  const appliedPrice = items[0].appliedPrice;
-                  return (
-                    <div key={productId} className="mb-4 p-3 bg-gray-100 rounded-lg">
-                      <h3 className="font-bold text-lg mb-2">{items[0].name}</h3>
-                      <p>
-                        {boxes > 0 && `${boxes} ${boxes === 1 ? 'caja' : 'cajas'} (${boxes * items[0].piecesPerBox} ${boxes * items[0].piecesPerBox === 1 ? 'pieza' : 'piezas'})`}
-                        {boxes > 0 && loosePieces > 0 && ' + '}
-                        {loosePieces > 0 && `${loosePieces} ${loosePieces === 1 ? 'pieza' : 'piezas'}`}
-                        {' = '}
-                        <span className="font-bold">{totalPieces} {totalPieces === 1 ? 'pieza' : 'piezas'} en total</span>
-                      </p>
-                      <p className="mt-1">Precio aplicado: ${appliedPrice.toFixed(2)} por pieza</p>
-                      <p className="font-bold">Subtotal: ${(appliedPrice * totalPieces).toFixed(2)}</p>
-                      <div className="mt-2 flex justify-end">
-                        <Button
-                          onClick={() => removeFromCart(items[0]._id)}
-                          variant="destructive"
-                          size="sm"
-                        >
-                          Eliminar
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p>El carrito está vacío.</p>
-            )}
-          </CardContent>
-        </Card>
-        {/* Total fijo */}
-        {cart.length > 0 && (
-          <div className="fixed bottom-0 right-0 w-[calc(50%-0.5rem)] mr-2 mb-2">
-            <Card>
-              <CardContent className="flex justify-between items-center p-4">
-                <div className="text-xl font-bold">
-                  Total: ${calculateTotal().toFixed(2)}
-                </div>
-                <Button 
-                  onClick={handleOpenPaymentModal}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  Pagar
-                </Button>
+          
+          {isDesktop && (
+            <Card className="flex-grow overflow-hidden flex flex-col mt-2">
+              <CardHeader className="flex-shrink-0">
+                <CardTitle>Información de productos</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-grow overflow-y-auto">
+                <ProductInfo
+                  searchTermBottom={searchTermBottom}
+                  handleSearchBottomChange={handleSearchBottomChange}
+                  handleKeyPressBottom={handleKeyPressBottom}
+                  handleSearchBottom={handleSearchBottom}
+                  filteredProducts={filteredProducts}
+                  handleSelectProduct={handleSelectProduct}
+                  productInfoBottom={productInfoBottom}
+                  isProductAvailable={isProductAvailable}
+                  handleAddFromDetails={handleAddFromDetails}
+                  productSearchedFromBottom={productSearchedFromBottom}
+                  calculateStockDisplay={calculateStockDisplay}
+                  getRemainingQuantity={getRemainingQuantity}
+                  getCartQuantity={getCartQuantity}
+                  getTotalStockAcrossLocations={getTotalStockAcrossLocations}
+                />
               </CardContent>
             </Card>
-          </div>
-        )}
+          )}
+        </div>
+        {/* Columna derecha */}
+        <div className="w-full sm:w-1/2 flex flex-col overflow-hidden">
+          <Card className="flex-grow flex flex-col overflow-hidden">
+            <CardHeader>
+              <CardTitle>Artículos en el carrito</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-grow overflow-y-auto pb-20">
+              {cart.length > 0 ? (
+                <div className="space-y-4">
+                  {Object.entries(groupCartItems(cart)).map(([productId, items]) => {
+                    const { boxes, loosePieces, totalPieces } = calculateProductTotals(items);
+                    const appliedPrice = items[0].appliedPrice;
+                    return (
+                      <div key={productId} className="p-3 bg-gray-100 rounded-lg">
+                        <h3 className="font-bold text-lg mb-2">{items[0].name}</h3>
+                        <p>
+                          {boxes > 0 && `${boxes} ${boxes === 1 ? 'caja' : 'cajas'} (${boxes * items[0].piecesPerBox} ${boxes * items[0].piecesPerBox === 1 ? 'pieza' : 'piezas'})`}
+                          {boxes > 0 && loosePieces > 0 && ' + '}
+                          {loosePieces > 0 && `${loosePieces} ${loosePieces === 1 ? 'pieza' : 'piezas'}`}
+                          {' = '}
+                          <span className="font-bold">{totalPieces} {totalPieces === 1 ? 'pieza' : 'piezas'} en total</span>
+                        </p>
+                        <p className="mt-1">Precio aplicado: ${appliedPrice.toFixed(2)} por pieza</p>
+                        <p className="font-bold">Subtotal: ${(appliedPrice * totalPieces).toFixed(2)}</p>
+                        <div className="mt-2 flex justify-end">
+                          <Button
+                            onClick={() => removeFromCart(items[0]._id)}
+                            variant="destructive"
+                            size="sm"
+                          >
+                            Eliminar
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p>El carrito está vacío.</p>
+              )}
+            </CardContent>
+            
+          </Card>
+          {cart.length > 0 && (
+            <div className="fixed bottom-0 left-0 right-0 sm:left-auto sm:w-[calc(50%-1rem)] p-2 bg-background">
+              <Card>
+                <CardContent className="flex justify-between items-center p-4">
+                  <div className="text-xl font-bold">
+                    Total: ${calculateTotal().toFixed(2)}
+                  </div>
+                  <Button 
+                    onClick={handleOpenPaymentModal}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    {isDesktop ? 'Pagar' : 'Confirmar Pedido'}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
       </div>
 
-       {/* Modales con Suspense */}
+      {/* Modales con Suspense */}
       <Suspense fallback={<div>Cargando...</div>}>
-        <PaymentModal
-          isOpen={isPaymentModalOpen}
-          onClose={handleClosePaymentModal}
-          paymentType={paymentType}
-          amountPaid={amountPaid}
-          change={change}
-          totalAmount={calculateTotal()}
-          isLoading={isLoading}
-          onPaymentTypeChange={handlePaymentTypeChange}
-          onAmountPaidChange={handleAmountPaidChange}
-          onConfirmPayment={handlePayment}
-        />
+        {isDesktop ? (
+          <PaymentModal
+            isOpen={isPaymentModalOpen}
+            onClose={handleClosePaymentModal}
+            paymentType={paymentType}
+            amountPaid={amountPaid}
+            change={change}
+            totalAmount={calculateTotal()}
+            isLoading={isLoading}
+            onPaymentTypeChange={handlePaymentTypeChange}
+            onAmountPaidChange={handleAmountPaidChange}
+            onConfirmPayment={handlePayment}
+          />
+        ) : (
+          <MobileConfirmModal
+            isOpen={isMobileConfirmModalOpen}
+            onClose={handleCloseMobileConfirmModal}
+            paymentType={paymentType}
+            totalAmount={calculateTotal()}
+            isLoading={isLoading}
+            customerName={customerName}
+            onPaymentTypeChange={handlePaymentTypeChange}
+            onCustomerNameChange={handleCustomerNameChange}
+            onConfirm={handleConfirmOrder}
+          />
+        )}
       </Suspense>
 
       <Suspense fallback={<div>Cargando...</div>}>
+        <PriceAdjustmentModal
+          isOpen={isPriceAdjustmentModalOpen}
+          onClose={() => setIsPriceAdjustmentModalOpen(false)}
+          cart={cart}
+          onApplyAdjustment={handleApplyPriceAdjustment}
+        />
         <CorteModal
           isOpen={isCorteModalOpen}
           onClose={closeCorteModal}
@@ -943,9 +1077,6 @@ const SalesPage: React.FC = () => {
           onCardAmountChange={(e) => setCardAmountCorte(e.target.value)}
           onCorte={handleCorte}
         />
-      </Suspense>
-
-      <Suspense fallback={<div>Cargando...</div>}>
         <CorteConfirmationModal
           isOpen={showCorteConfirmation}
           onClose={() => setShowCorteConfirmation(false)}
@@ -955,16 +1086,8 @@ const SalesPage: React.FC = () => {
           onConfirm={confirmCorte}
         />
       </Suspense>
-      <Suspense fallback={<div>Cargando...</div>}>
-        <PriceAdjustmentModal
-          isOpen={isPriceAdjustmentModalOpen}
-          onClose={() => setIsPriceAdjustmentModalOpen(false)}
-          cart={cart}
-          onApplyAdjustment={handleApplyPriceAdjustment}
-        />
-      </Suspense>
-      </div>
+    </div>
   );
 };
 
-export default SalesPage;
+export default MobileSalesPage;

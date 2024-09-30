@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -14,6 +14,7 @@ interface Product {
   category: string;
   imageUrl?: string;
   availability: boolean;
+  piecesPerBox: number;
 }
 
 interface ProductCardProps {
@@ -24,6 +25,7 @@ interface ProductCardProps {
   onUnitTypeChange: (unitType: 'pieces' | 'boxes') => void;
   onAddToCart: () => void;
   remainingQuantity: number;
+  totalStockAcrossLocations: number;
   maxQuantity: number;
 }
 
@@ -35,16 +37,32 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onUnitTypeChange, 
   onAddToCart,
   remainingQuantity,
-  maxQuantity 
+  totalStockAcrossLocations,
+  maxQuantity
 }) => {
-  const isAvailable = product.availability && remainingQuantity > 0;
+  const [localQuantity, setLocalQuantity] = useState(quantity.toString());
+  const isAvailable = product.availability && totalStockAcrossLocations > 0;
+
+  useEffect(() => {
+    setLocalQuantity(quantity.toString());
+  }, [quantity]);
+
   const handleInputClick = (e: React.MouseEvent<HTMLInputElement>) => {
     e.currentTarget.select();
   };
 
-  const handleQuantityChange = (newQuantity: number) => {
-    const clampedQuantity = Math.min(Math.max(1, newQuantity), maxQuantity);
-    onQuantityChange(clampedQuantity);
+  const handleQuantityChange = (value: string) => {
+    setLocalQuantity(value);
+    const newQuantity = value === '' ? 0 : parseInt(value, 10);
+    if (!isNaN(newQuantity)) {
+      onQuantityChange(newQuantity);
+    }
+  };
+
+  const handleUnitTypeChange = (newUnitType: 'pieces' | 'boxes') => {
+    onUnitTypeChange(newUnitType);
+    setLocalQuantity('');
+    onQuantityChange(0);
   };
 
   return (
@@ -76,8 +94,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <div className="w-2/5 flex flex-col justify-center space-y-2">
           <div className="flex items-center justify-center space-x-2 pb-4">
             <Button 
-              onClick={() => handleQuantityChange(quantity - 1)}
-              disabled={quantity <= 1 || !isAvailable}
+              onClick={() => handleQuantityChange((parseInt(localQuantity) - 1).toString())}
+              disabled={parseInt(localQuantity) <= 0 || !isAvailable}
               size="sm"
               variant="outline"
               aria-label="Disminuir cantidad"
@@ -86,18 +104,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
             </Button>
             <Input
               type="number"
-              min="1"
+              min="0"
               max={maxQuantity}
-              value={quantity}
-              onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
+              value={localQuantity}
+              onChange={(e) => handleQuantityChange(e.target.value)}
               onClick={handleInputClick}
               className="w-16 text-center no-spinners"
               aria-label="Cantidad"
               disabled={!isAvailable}
             />
             <Button 
-              onClick={() => handleQuantityChange(quantity + 1)}
-              disabled={quantity >= maxQuantity || !isAvailable}
+              onClick={() => handleQuantityChange((parseInt(localQuantity) + 1).toString())}
+              disabled={parseInt(localQuantity) >= maxQuantity || !isAvailable}
               size="sm"
               variant="outline"
               aria-label="Aumentar cantidad"
@@ -108,7 +126,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           
           <RadioGroup 
             value={unitType} 
-            onValueChange={onUnitTypeChange} 
+            onValueChange={handleUnitTypeChange} 
             className="flex justify-center space-x-4"
             disabled={!isAvailable}
           >
@@ -128,9 +146,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <Button 
             onClick={onAddToCart}
             className="w-full"
-            disabled={!isAvailable}
+            disabled={!isAvailable || parseInt(localQuantity) === 0}
           >
-            {isAvailable ? 'Agregar' : 'No disponible'}
+            {isAvailable ? (parseInt(localQuantity) === 0 ? 'Ingrese cantidad' : 'Agregar') : 'No disponible'}
           </Button>
         </div>
       </CardContent>
