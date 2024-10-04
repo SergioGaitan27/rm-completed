@@ -759,7 +759,7 @@ const MobileSalesPage: React.FC = () => {
       localStorage.removeItem('cart');
   
       // Redirigir a la página de pago con el ID del ticket
-      router.push(`/accionesMobile?ticketId=${result.data.ticket.ticketId}`);
+      router.push(`/acciones`);
   
       handleCloseMobileConfirmModal();
       toast.success('Pedido confirmado. 🎉');
