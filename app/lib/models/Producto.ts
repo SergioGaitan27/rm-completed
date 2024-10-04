@@ -2,7 +2,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { IProductBase, IStockLocation } from '../../types/product';
 
-export interface IProduct extends IProductBase, Document {}
+export interface IProduct extends IProductBase, Document {
+  ajustado: boolean;
+}
 
 // Re-exporta el tipo IStockLocation
 export type { IStockLocation };
@@ -27,7 +29,8 @@ const ProductSchema: Schema = new Schema({
   }],
   imageUrl: { type: String },
   category: { type: String, default: 'Sin categoría' },
-  availability: { type: Boolean, default: true }
+  availability: { type: Boolean, default: true },
+  ajustado: { type: Boolean, default: false } 
 });
 
 // Asegúrate de que los índices estén configurados correctamente

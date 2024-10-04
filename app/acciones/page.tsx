@@ -537,11 +537,24 @@ const MobileSalesPage: React.FC = () => {
       return 0;
     }
   
-    return product.stockLocations.reduce((total, location) => {
+    // Obtener la ubicación actual del usuario
+    const userLocation = session?.user?.location || '';
+  
+    // Filtrar ubicaciones: la ubicación actual y las que comienzan con 'B'
+    const filteredLocations = product.stockLocations.filter(location => {
+      return (
+        location.location === userLocation ||
+        location.location.toUpperCase().startsWith('B')
+      );
+    });
+  
+    // Sumar las cantidades de las ubicaciones filtradas
+    return filteredLocations.reduce((total, location) => {
       const quantity = Number(location.quantity);
       return total + (isNaN(quantity) ? 0 : quantity);
     }, 0);
-  }, []);
+  }, [session]);
+  
 
   const getRemainingQuantity = useCallback((product: Product): number => {
     if (!session || !session.user?.location) {
@@ -554,17 +567,30 @@ const MobileSalesPage: React.FC = () => {
       return 0;
     }
   
-    const locationStock = product.stockLocations.find(
-      location => location.location === session.user.location
-    );
+    // Obtener la ubicación actual del usuario
+    const userLocation = session.user.location;
   
-    if (locationStock) {
-      const quantity = Number(locationStock.quantity);
-      return isNaN(quantity) ? 0 : quantity;
-    }
+    // Filtrar ubicaciones: la ubicación actual y las que comienzan con 'B'
+    const relevantLocations = product.stockLocations.filter(location => {
+      return (
+        location.location === userLocation ||
+        location.location.toUpperCase().startsWith('B')
+      );
+    });
   
-    return 0;
-  }, [session]);
+    // Sumar las cantidades de las ubicaciones filtradas
+    const totalRelevantStock = relevantLocations.reduce((total, location) => {
+      const quantity = Number(location.quantity);
+      return total + (isNaN(quantity) ? 0 : quantity);
+    }, 0);
+  
+    // Restar la cantidad en el carrito
+    const cartQuantity = getCartQuantity(product._id);
+    const remainingQuantity = totalRelevantStock - cartQuantity;
+  
+    return remainingQuantity;
+  }, [session, getCartQuantity]);
+  
 
   const handleAddToCart = () => {
     if (selectedProduct) {
@@ -778,7 +804,24 @@ const MobileSalesPage: React.FC = () => {
       return;
     }
     setIsLoading(true);
-
+  
+    let amountPaidValue: number;
+  
+    if (paymentType === 'cash') {
+      amountPaidValue = parseFloat(amountPaid);
+      if (isNaN(amountPaidValue)) {
+        toast.error('Por favor, ingrese un monto válido');
+        setIsLoading(false);
+        return;
+      }
+    } else if (paymentType === 'card') {
+      amountPaidValue = calculateTotal();// Asignar el monto total para pagos con tarjeta
+    } else {
+      toast.error('Tipo de pago no válido');
+      setIsLoading(false);
+      return;
+    }
+  
     const ticketData = {
       items: cart.map(item => ({
         productId: item._id,
@@ -790,11 +833,11 @@ const MobileSalesPage: React.FC = () => {
       })),
       totalAmount: calculateTotal(),
       paymentType,
-      amountPaid: parseFloat(amountPaid),
-      change,
+      amountPaid: amountPaidValue,
+      change: paymentType === 'cash' ? change : 0, // Cambio solo para efectivo
       location: session.user?.location
     };
-
+  
     try {
       const response = await fetch('/api/tickets', {
         method: 'POST',
@@ -805,51 +848,28 @@ const MobileSalesPage: React.FC = () => {
       });
     
       if (!response.ok) {
-        throw new Error('Error al guardar el ticket');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al procesar el pago');
       }
     
       const result = await response.json();
-      
-      if (result.success && result.data) {
-        const { ticket, updatedProducts } = result.data;
-        
-        if (updatedProducts && Array.isArray(updatedProducts)) {
-          setProducts(prevProducts => {
-            const newProducts = [...prevProducts];
-            updatedProducts.forEach((updatedProduct: Product) => {
-              const index = newProducts.findIndex(p => p._id === updatedProduct._id);
-              if (index !== -1) {
-                newProducts[index] = updatedProduct;
-              }
-            });
-            return newProducts;
-          });
-        } else {
-          console.warn('No se recibieron productos actualizados del servidor');
-        }
+      console.log('Pago exitoso:', result);
     
-        if (isDesktop) {
-          await printTicket(ticket?.ticketId);
-        }
-
-        handleClosePaymentModal();
-        setCart([]);
-        toast.success('Pago procesado exitosamente');
-        setProductInfoBottom(null);
-        setSearchTermBottom('');
-        if (searchInputRef.current) {
-          searchInputRef.current.focus();
-        }
-      } else {
-        throw new Error(result.message || 'Error desconocido al procesar el ticket');
-      }
-    } catch (error) {
-      console.error('Error al procesar el pago o imprimir:', error);
-      toast.error('Error al procesar el pago o imprimir el ticket');
+      // Vaciar el carrito
+      setCart([]);
+      localStorage.removeItem('cart');
+    
+      // Redirigir o mostrar mensaje de éxito
+      toast.success('Pago procesado exitosamente');
+      handleClosePaymentModal();
+    } catch (error: any) {
+      console.error('Error al procesar el pago:', error);
+      toast.error(error.message || 'Error al procesar el pago');
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   const handleAddToProductInfo = () => {
     if (selectedProduct) {

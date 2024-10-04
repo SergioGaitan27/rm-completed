@@ -158,3 +158,34 @@ textarea {
     font-size: 14px;
   }
 }
+
+
+/* Ejemplo básico para React Paginate */
+.pagination {
+  display: flex;
+  list-style: none;
+  padding: 0;
+}
+
+.pagination li {
+  margin: 0 4px;
+}
+
+.pagination li a {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #4a5568;
+}
+
+.pagination li.active a {
+  background-color: #3182ce;
+  color: white;
+  border-color: #3182ce;
+}
+
+.pagination li.disabled a {
+  color: #a0aec0;
+  cursor: not-allowed;
+}

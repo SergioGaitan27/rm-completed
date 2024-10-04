@@ -26,6 +26,7 @@ export interface IProductBase {
 
 export interface Product extends IProductBase {
   _id: string;
+  ajustado: boolean;
 }
 
 export interface CartItem extends Product {

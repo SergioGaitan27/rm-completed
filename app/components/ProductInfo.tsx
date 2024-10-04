@@ -41,12 +41,6 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
 }) => {
 
 
-  const getAvailableQuantityInLocation = (product: Product) => {
-    const locationQuantity = getRemainingQuantity(product);
-    const cartQuantity = getCartQuantity(product._id);
-    return locationQuantity - cartQuantity;
-  };
-
   const getAvailableQuantityTotal = (product: Product) => {
     const totalQuantity = getTotalStockAcrossLocations(product);
     const cartQuantity = getCartQuantity(product._id);
@@ -116,24 +110,21 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
               {productInfoBottom.price4 && <p>Precio 4: ${productInfoBottom.price4.toFixed(2)}</p>}
               {productInfoBottom.price5 && <p>Precio 5: ${productInfoBottom.price5.toFixed(2)}</p>}
               
-              <div className="mt-4 p-2 bg-gray-100 rounded">
-            <p className="font-bold">
-              Inventario en tu ubicación: {getRemainingQuantity(productInfoBottom)} piezas
-            </p>
-            <p className={`font-bold ${getAvailableQuantityInLocation(productInfoBottom) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-              Disponible en tu ubicación: {getAvailableQuantityInLocation(productInfoBottom)} piezas
-            </p>
-            <p className="font-bold mt-2">
-              Inventario total en todas las ubicaciones: {getTotalStockAcrossLocations(productInfoBottom)} piezas
-            </p>
-            <p className="font-bold text-green-600">
-              Disponible para venta (total): {getAvailableQuantityTotal(productInfoBottom)} piezas
-            </p>
-            <p className="font-bold text-blue-600 mt-2">
-              Cantidad en carrito: {getCartQuantity(productInfoBottom._id)} piezas
-            </p>
-          </div>
+              {productInfoBottom.ajustado ? (
+                <>
+                  <div className="mt-4 p-2 bg-gray-100 rounded">
+                    <p className={`font-bold text-center ${getAvailableQuantityTotal(productInfoBottom) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      Disponible para venta: {getAvailableQuantityTotal(productInfoBottom)} piezas
+                    </p>
+                  </div>
+                  
+                  {/* Aquí puedes agregar más detalles sobre el stock si lo deseas */}
+                </>
+              ) : (
+                <p></p>
+              )}
 
+              {/* Comentado el detalle por ubicaciones */}
               {/* <h4 className="font-bold mt-4">Detalle por ubicaciones:</h4>
               <ul className="mt-2">
                 {calculateStockDisplay(productInfoBottom.stockLocations, productInfoBottom.piecesPerBox).map((location, index) => (
