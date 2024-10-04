@@ -537,11 +537,24 @@ const MobileSalesPage: React.FC = () => {
       return 0;
     }
   
-    return product.stockLocations.reduce((total, location) => {
+    // Obtener la ubicación actual del usuario
+    const userLocation = session?.user?.location || '';
+  
+    // Filtrar ubicaciones: la ubicación actual y las que comienzan con 'B'
+    const filteredLocations = product.stockLocations.filter(location => {
+      return (
+        location.location === userLocation ||
+        location.location.toUpperCase().startsWith('B')
+      );
+    });
+  
+    // Sumar las cantidades de las ubicaciones filtradas
+    return filteredLocations.reduce((total, location) => {
       const quantity = Number(location.quantity);
       return total + (isNaN(quantity) ? 0 : quantity);
     }, 0);
-  }, []);
+  }, [session]);
+  
 
   const getRemainingQuantity = useCallback((product: Product): number => {
     if (!session || !session.user?.location) {
@@ -554,17 +567,30 @@ const MobileSalesPage: React.FC = () => {
       return 0;
     }
   
-    const locationStock = product.stockLocations.find(
-      location => location.location === session.user.location
-    );
+    // Obtener la ubicación actual del usuario
+    const userLocation = session.user.location;
   
-    if (locationStock) {
-      const quantity = Number(locationStock.quantity);
-      return isNaN(quantity) ? 0 : quantity;
-    }
+    // Filtrar ubicaciones: la ubicación actual y las que comienzan con 'B'
+    const relevantLocations = product.stockLocations.filter(location => {
+      return (
+        location.location === userLocation ||
+        location.location.toUpperCase().startsWith('B')
+      );
+    });
   
-    return 0;
-  }, [session]);
+    // Sumar las cantidades de las ubicaciones filtradas
+    const totalRelevantStock = relevantLocations.reduce((total, location) => {
+      const quantity = Number(location.quantity);
+      return total + (isNaN(quantity) ? 0 : quantity);
+    }, 0);
+  
+    // Restar la cantidad en el carrito
+    const cartQuantity = getCartQuantity(product._id);
+    const remainingQuantity = totalRelevantStock - cartQuantity;
+  
+    return remainingQuantity;
+  }, [session, getCartQuantity]);
+  
 
   const handleAddToCart = () => {
     if (selectedProduct) {
@@ -778,7 +804,24 @@ const MobileSalesPage: React.FC = () => {
       return;
     }
     setIsLoading(true);
-
+  
+    let amountPaidValue: number;
+  
+    if (paymentType === 'cash') {
+      amountPaidValue = parseFloat(amountPaid);
+      if (isNaN(amountPaidValue)) {
+        toast.error('Por favor, ingrese un monto válido');
+        setIsLoading(false);
+        return;
+      }
+    } else if (paymentType === 'card') {
+      amountPaidValue = calculateTotal();
+    } else {
+      toast.error('Tipo de pago no válido');
+      setIsLoading(false);
+      return;
+    }
+  
     const ticketData = {
       items: cart.map(item => ({
         productId: item._id,
@@ -790,11 +833,11 @@ const MobileSalesPage: React.FC = () => {
       })),
       totalAmount: calculateTotal(),
       paymentType,
-      amountPaid: parseFloat(amountPaid),
-      change,
+      amountPaid: amountPaidValue,
+      change: paymentType === 'cash' ? change : 0,
       location: session.user?.location
     };
-
+  
     try {
       const response = await fetch('/api/tickets', {
         method: 'POST',
@@ -805,7 +848,8 @@ const MobileSalesPage: React.FC = () => {
       });
     
       if (!response.ok) {
-        throw new Error('Error al guardar el ticket');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al procesar el pago');
       }
     
       const result = await response.json();
@@ -831,7 +875,7 @@ const MobileSalesPage: React.FC = () => {
         if (isDesktop) {
           await printTicket(ticket?.ticketId);
         }
-
+  
         handleClosePaymentModal();
         setCart([]);
         toast.success('Pago procesado exitosamente');
@@ -843,24 +887,11 @@ const MobileSalesPage: React.FC = () => {
       } else {
         throw new Error(result.message || 'Error desconocido al procesar el ticket');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al procesar el pago o imprimir:', error);
-      toast.error('Error al procesar el pago o imprimir el ticket');
+      toast.error(error.message || 'Error al procesar el pago o imprimir el ticket');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleAddToProductInfo = () => {
-    if (selectedProduct) {
-      setProductInfoBottom(selectedProduct);
-      setProductSearchedFromBottom(true);
-      // No añadimos al carrito aquí, solo actualizamos ProductInfo
-      toast.success('Producto seleccionado para revisión');
-
-      if (searchInputRef.current) {
-        searchInputRef.current.focus();
-      }
     }
   };
 
