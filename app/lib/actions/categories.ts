@@ -39,8 +39,6 @@ export const roleCategories: Record<UserRole, Category[]> = {
     { id: 2, name: "Productos", description: "Consulta existencia y ubicaciones.", link: "/productos" },
   ],
   bodega: [
-
-    { id: 1, name: "Punto de venta", description: "Ventas y pedidos", link: "/acciones" },
     { id: 2, name: "Surtir pedidos mobile", description: "Revisa y surte tickets mobiles.", link: "/warehouse" },
     { id: 3, name: "Productos", description: "Consulta existencia y ubicaciones.", link: "/productos" },
   ],
@@ -49,8 +47,8 @@ export const roleCategories: Record<UserRole, Category[]> = {
   ],
   sistemas: [
     { id: 1, name: "Productos", description: "Agregar, modificar, eliminar e inventario.", link: "/productos" },
-    { id: 2, name: "Personal", description: "Sueldos, asistencias y permisos.", link: "/personal" },
-    { id: 3, name: "Contenedores", description: "Precargar, recibir e historial.", link: "/contenedores" },
-    { id: 4, name: "Documentos", description: "Contratos, recibos y documentos de administración.", link: "/documentos" },
+    { id: 2, name: "Punto de venta", description: "Ventas, pedidos y transferencias.", link: "/acciones" },
+    { id: 3, name: "Surtir pedidos mobiles", description: "Revisa y surte tickets mobiles.", link: "/warehouse" },
+    { id: 4, name: "Registro de moviminetos", description: "Administra el registro de moviminetos.", link: "/stock-movements" },
   ],
 };

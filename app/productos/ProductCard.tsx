@@ -125,7 +125,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, userLocation, userRo
         <Text fontSize="sm"><strong>Código de producto:</strong> {product.productCode}</Text>
         <Text fontSize="sm"><strong>Piezas por caja:</strong> {product.piecesPerBox}</Text>
         <Text fontSize="sm"><strong>Categoría:</strong> {product.category}</Text>
-        {userRole === 'super_administrador' && (
+        {(userRole === 'super_administrador' || userRole === 'sistemas') && (
           <Text fontSize="sm"><strong>Costo:</strong> ${product.cost.toFixed(2)}</Text>
         )}
         <Text fontSize="sm"><strong>Precios:</strong></Text>
@@ -146,7 +146,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, userLocation, userRo
         })}
       </VStack>
       
-      {userRole === 'super_administrador' && (
+      {(userRole === 'super_administrador' || userRole === 'sistemas') && (
         <Box width="100%" display="flex" justifyContent="center" mt={4}>
           <Button 
             onClick={(e) => {

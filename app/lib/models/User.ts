@@ -7,7 +7,7 @@ export interface UserDocument extends mongoose.Document {
   name: string;
   phone?: string;
   image?: string;
-  role: 'super_administrador' | 'administrador' | 'vendedor' | 'cliente' | 'sistemas';
+  role: 'super_administrador' | 'administrador' | 'vendedor' | 'cajero' | 'bodega' | 'cliente' | 'sistemas';
   location: string; // Nuevo campo
   createdAt: Date;
   updatedAt: Date;
