@@ -21,6 +21,8 @@ interface PedidoDetailsProps {
   onPedidoChange: (field: keyof IPedidoList, value: string | number) => void;
   onAddToPedidoList: () => void;
   userLocation: string;
+  userRole: string;
+  allLocations: string[];
 }
 
 const calculateStockDisplay = (stockLocations: IStockLocation[], piecesPerBox: number) => {
@@ -42,7 +44,9 @@ const PedidoDetails: React.FC<PedidoDetailsProps> = ({
   pedido,
   onPedidoChange,
   onAddToPedidoList,
-  userLocation
+  userLocation,
+  userRole,
+  allLocations
 }) => {
   const handleQuantityChange = (valueString: string) => {
     onPedidoChange('quantity', valueString);
@@ -63,22 +67,23 @@ const PedidoDetails: React.FC<PedidoDetailsProps> = ({
     return `${boxes} ${boxes === 1 ? 'caja' : 'cajas'}${loosePieces > 0 ? ` y ${loosePieces} ${loosePieces === 1 ? 'pieza' : 'piezas'}` : ''}`;
   };
 
+  const canChooseDestination = userRole === 'super_administrador' || userRole === 'sistemas';
+
   return (
     <Box bg="white" p={6} borderRadius="md" boxShadow="md" w="full">
-      <VStack spacing={4} align="stretch">
-        <Heading as="h2" size="lg">Detalles de producto</Heading>
-        
+      <VStack spacing={4} p={4} align="stretch">
+        <Heading mb={2} as="h2" size="lg">Detalles de producto:</Heading>
         <HStack spacing={4} align="start">
           {pedido.imageUrl && (
             <Image 
               src={pedido.imageUrl} 
               alt={selectedProduct.name}
-              boxSize="100px"
+              boxSize="300px"
               objectFit="cover"
               borderRadius="md"
             />
           )}
-          <VStack align="start" spacing={2}>
+          <VStack paddingLeft={4} paddingRight={4} align="start" spacing={2}>
             <Text fontWeight="bold">Producto Seleccionado:</Text>
             <Text>{selectedProduct.boxCode} | {selectedProduct.name}</Text>
             <Text fontWeight="bold">Código de Producto:</Text>
@@ -86,20 +91,19 @@ const PedidoDetails: React.FC<PedidoDetailsProps> = ({
             <Text fontWeight="bold">Piezas por caja:</Text>
             <Text>{selectedProduct.piecesPerBox}</Text>
           </VStack>
+          <VStack align="start" spacing={2}>
+          <Text fontWeight="bold">Stock Actual:</Text>
+            {stockDisplay.map((location, index) => (
+              <Text key={index}>
+                <strong>{location.location}:</strong>
+                {location.boxes > 0 && ` ${location.boxes} ${location.boxes === 1 ? 'caja' : 'cajas'}`}
+                {location.boxes > 0 && location.loosePieces > 0 && ' y'}
+                {location.loosePieces > 0 && ` ${location.loosePieces} ${location.loosePieces === 1 ? 'pieza' : 'piezas'}`}
+                {' | Total: '}{location.total} {location.total === 1 ? 'pieza' : 'piezas'}
+              </Text>
+            ))}
+          </VStack>
         </HStack>
-
-        <Box>
-          <Text fontWeight="bold" mb={2}>Stock Actual:</Text>
-          {stockDisplay.map((location, index) => (
-            <Text key={index}>
-              {location.location}: 
-              {location.boxes > 0 && ` ${location.boxes} ${location.boxes === 1 ? 'caja' : 'cajas'}`}
-              {location.boxes > 0 && location.loosePieces > 0 && ' y'}
-              {location.loosePieces > 0 && ` ${location.loosePieces} ${location.loosePieces === 1 ? 'pieza' : 'piezas'}`}
-              {' | Total: '}{location.total} {location.total === 1 ? 'pieza' : 'piezas'}
-            </Text>
-          ))}
-        </Box>
 
         <FormControl>
           <FormLabel fontWeight="bold">Ubicación origen:</FormLabel>
@@ -122,7 +126,21 @@ const PedidoDetails: React.FC<PedidoDetailsProps> = ({
 
         <FormControl>
           <FormLabel fontWeight="bold">Ubicación destino:</FormLabel>
-          <Text color="blue.500" fontWeight="semibold">{userLocation}</Text>
+          {canChooseDestination ? (
+            <Select
+              value={pedido.toLocation}
+              onChange={(e) => onPedidoChange('toLocation', e.target.value)}
+            >
+              <option value="">Seleccione ubicación destino</option>
+              {allLocations.map((location, index) => (
+                <option key={index} value={location}>
+                  {location}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <Text color="blue.500" fontWeight="semibold">{userLocation}</Text>
+          )}
         </FormControl>
 
         <FormControl>
@@ -155,7 +173,8 @@ const PedidoDetails: React.FC<PedidoDetailsProps> = ({
             !pedido.fromLocation || 
             pedido.quantity === '' ||
             Number(pedido.quantity) === 0 ||
-            Number(pedido.quantity) > safeMaxQuantity
+            Number(pedido.quantity) > safeMaxQuantity ||
+            (canChooseDestination && !pedido.toLocation)
           }
         >
           Agregar a la lista

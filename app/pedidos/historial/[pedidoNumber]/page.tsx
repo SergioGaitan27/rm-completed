@@ -20,10 +20,15 @@ import {
   useToast,
   Badge,
   Input,
+  HStack,
 } from "@chakra-ui/react";
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 import { IPedidoNumber, IPedidoItem } from '@/app/types/product';
 import { UserRole } from '@/app/lib/actions/categories';
+import { FaFilePdf } from 'react-icons/fa';
+import { Icon } from "@chakra-ui/react";
 
 const calculateBoxesAndPieces = (quantity: number, piecesPerBox: number): string => {
   if (piecesPerBox <= 1) return `${quantity} piezas`;
@@ -156,6 +161,94 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
     return userRole === 'super_administrador' || userRole === 'sistemas';
   }, [session]);
 
+  const generatePDF = useCallback(async () => {
+    if (!pedido) return;
+  
+    const doc = new jsPDF();
+    
+    // Título
+    doc.setFontSize(18);
+    doc.text('HOJA DE ENTREGA', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+  
+    // Información general
+    doc.setFontSize(12);
+    doc.text(`ID de Pedido: ${pedido._id}`, 14, 30);
+    doc.text(`Fecha: ${new Date(pedido.date).toLocaleString()}`, 14, 40);
+    doc.text(`Total de Productos: ${pedido.pedidos.length}`, 14, 50);
+    doc.text(`Total de Unidades: ${pedido.pedidos.reduce((acc, t) => acc + t.quantity, 0)}`, 14, 60);
+    doc.text(`Estado: ${pedido.isSurtido ? "Surtido" : "Pendiente"}`, 14, 70);
+  
+    // Tabla de productos
+    const tableData = pedido.pedidos.map((item: IPedidoItem) => [
+      item.productName,
+      item.productCode,
+      item.boxCode,
+      item.fromLocation,
+      item.toLocation,
+      `${item.quantity} (${calculateBoxesAndPieces(item.quantity, item.piecesPerBox)})`
+    ]);
+  
+    doc.autoTable({
+      startY: 80,
+      head: [['Producto', 'Código', 'Código Caja', 'Desde', 'Hacia', 'Cantidad']],
+      body: tableData,
+    });
+  
+    let finalY = (doc as any).lastAutoTable.finalY || 80;
+  
+    // Agregar imagen de evidencia si existe
+    if (pedido.evidenceImageUrl) {
+      try {
+        const imgData = await fetch(pedido.evidenceImageUrl).then(r => r.arrayBuffer());
+        const imgFormat = pedido.evidenceImageUrl.split('.').pop()?.toLowerCase();
+        const imgType = imgFormat === 'png' ? 'PNG' : 'JPEG';
+        
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        
+        // Calcular dimensiones de la imagen manteniendo la proporción
+        const imgProps = doc.getImageProperties(new Uint8Array(imgData));
+        const imgWidth = 50; // Ancho fijo deseado
+        const imgHeight = (imgWidth / imgProps.width) * imgProps.height;
+  
+        // Verificar si hay espacio suficiente en la página actual
+        if (finalY + 20 + imgHeight > pageHeight) {
+          doc.addPage();
+          finalY = 20;
+        } else {
+          finalY += 20;
+        }
+  
+        doc.text('IMAGEN DE EVIDENCIA:', pageWidth / 2, finalY, { align: 'center' });
+        finalY += 10;
+  
+        doc.addImage(
+          new Uint8Array(imgData),
+          imgType,
+          (pageWidth - imgWidth) / 2,
+          finalY,
+          imgWidth,
+          imgHeight
+        );
+      } catch (error) {
+        console.error('Error al agregar la imagen al PDF:', error);
+        doc.text('Error al cargar la imagen de evidencia', 14, finalY + 10);
+      }
+    }
+  
+    // Guardar el PDF
+    const fileName = `pedido_${pedido._id}.pdf`;
+    doc.save(fileName);
+  
+    toast({
+      title: "PDF Generado",
+      description: `El PDF ha sido guardado como ${fileName}`,
+      status: "success",
+      duration: 3000,
+      isClosable: true,
+    });
+  }, [pedido, toast]);
+
   if (status === 'loading' || isLoading) {
     return (
       <Flex minH="100vh" alignItems="center" justifyContent="center">
@@ -171,7 +264,16 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
     <Box minH="100vh" bg="gray.50">
       <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="stretch">
-          <Heading as="h1" size="xl" textAlign="center">Detalles del Pedido</Heading>
+          <Flex justifyContent="space-between" alignItems="center">
+            <Heading as="h1" size="xl">Detalles del Pedido</Heading>
+            <Button 
+              onClick={generatePDF} 
+              colorScheme="blue"
+              leftIcon={<Icon as={FaFilePdf} />}
+            >
+              Generar PDF
+            </Button>
+          </Flex>
           
           <Card>
             <CardBody>
@@ -267,7 +369,7 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
 
           <Button 
             onClick={() => router.back()} 
-            colorScheme="blue"
+            colorScheme="gray"
             size="lg"
           >
             Volver al Historial

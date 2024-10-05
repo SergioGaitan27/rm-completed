@@ -73,7 +73,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               <Label htmlFor="card">Tarjeta</Label>
             </div>
           </RadioGroup>
-          <p className="font-bold text-lg">Total a pagar: ${totalAmount.toFixed(2)}</p>
+          <p className="font-bold text-2xl text-blue-500">Total a pagar: ${totalAmount.toFixed(2)}</p>
           {paymentType === 'cash' && (
             <div>
               <Label htmlFor="amountPaid">Monto pagado:</Label>

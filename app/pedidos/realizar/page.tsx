@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import {
@@ -134,7 +134,7 @@ const PedidoProductosPage: React.FC = () => {
         setPedidoList(prev => [...prev, {
           ...pedido,
           quantity: Number(pedido.quantity),
-          piecesPerBox: selectedProduct.piecesPerBox  // Add this line
+          piecesPerBox: selectedProduct.piecesPerBox
         }]);
     setSelectedProduct(null);
     setPedido({
@@ -162,7 +162,7 @@ const PedidoProductosPage: React.FC = () => {
     try {
       const pedidoData = {
         pedidos: pedidoList,
-        isSurtido: false  // Asegúrate de que este campo esté presente
+        isSurtido: false
       };
   
       const response = await fetch('/api/pedidos', {
@@ -222,6 +222,8 @@ const PedidoProductosPage: React.FC = () => {
                   onPedidoChange={handlepedidoChange}
                   onAddToPedidoList={handleAddToPedidoList}
                   userLocation={userLocation}
+                  userRole={session.user.role}
+                  allLocations={products.flatMap(p => p.stockLocations.map(sl => sl.location)).filter((v, i, a) => a.indexOf(v) === i)}
                 />
               )}
 
