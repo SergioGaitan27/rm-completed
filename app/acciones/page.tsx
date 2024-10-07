@@ -24,6 +24,12 @@ interface AdjustedCartItem extends CartItem {
     adjustedPrice?: number;
 }
 
+interface CorteResults {
+  actualCash: number;
+  actualCard: number;
+  // Añade aquí otras propiedades si las hay
+}
+
 const groupCartItems = (cart: CartItem[]): Record<string, CartItem[]> => {
   return cart.reduce((acc, item) => {
     if (!acc[item._id]) {
@@ -211,6 +217,55 @@ const MobileSalesPage: React.FC = () => {
         toast.error(`Error al imprimir el ticket: ${error.message}`);
       } else {
         toast.error('Error desconocido al imprimir el ticket');
+      }
+    }
+  };
+
+  const printCorteTicket = async (corteResults: CorteResults) => {
+    if (!corteResults) {
+      toast.error('No hay resultados de corte para imprimir');
+      return;
+    }
+  
+    try {
+      const conector = new ConectorPluginV3(undefined, 'YmEwNzRiYWFfXzIwMjQtMDctMTBfXzIwMjQtMTAtMDgjIyMxUXJaS2xpWjVjbU01VEVmckg5Zm93RWxWOHVmQmhYNjVFQnE1akVFMzBZWG51QUs5YUd0U3Ayc2d0N2E0a1ZiOExEMm1EV2NnTjJhTWR0dDhObUw2bFBLTERGYjBXYkFpTTBBNjJTYlo5KzBLRUVLMzlFeEVLcVR5d2dEcWdsQzUvWlhxZCtxUC9aQ1RnL2M5UVhKRUxJRXVYOGVRU0dxZlg4UFF1MkFiY3doME5mdUdYaitHVk1LMzRvcmRDN0FEeTg4ZStURmlQRktrRW9UcnBMSisrYkJQTC8wZ1ZZdFIxdTNGV3dYQWR0Ylg3U25paU5qZ0I5QmNTQlZRRmp5NWRGYUVyODFnak1UR2VPWHB6T2xMZUhWWmJFVUJCQkhEOENyUGJ4NlNQYXBxOHA1NVlCNS9IZkJ0VWpsSDdMa1JocGlBSWF6Z2hVdzRPMFZ6aVZ6enpVbHNnR091VElWdTdaODRvUDlvWjg5bGI5djIxbTcwSDB4L1ZqSXlGNU52b2JTemoyNXMzL3NxS2I1SEtYVHduVW5tTXBvcWxGZmwwajZXM1ZFQnhkdjh2Y2VRMWtaSWkyY1ZWbjNUK29tTkJLWFRkR0NQSS9UaWgyaWNWdFlQZ05IbENxUXBBK0c3ZHFBUTd4VEh6TEJuT2dMemU2THZuRkpRajBpZkt0dlNHNDNzVU82bmRUaS8zbHpta1orK2lIWmVZR3pIampKWnV5RFRRbEo2MUpOamVYUWpHMTliREFaNFZ3SDhJanBWOEUyRERBLzVDcEYwL1l5MTByTTdlT0t0K1JaTWFlc3pHbkRpeXoydHpRK0Z4ZjNrdFV3U1ZFbCtCcFQ2Y1NLSzVNaFFjWDJjMmlrcWpCbVZSNDBzSVhKMjV1VXB1Nko0L1liMzgzNE1iWT0=');
+  
+      await conector.Iniciar();
+      let anchoCaracteres = 48; // Por defecto para 80mm
+  
+      conector.EstablecerEnfatizado(true);
+      conector.EstablecerTamañoFuente(2, 2);
+      conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
+      conector.EscribirTexto("TICKET DE CORTE\n\n");
+      conector.EstablecerTamañoFuente(1, 1);
+      conector.EstablecerEnfatizado(false);
+  
+      conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
+      conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
+      conector.EscribirTexto(`Efectivo: $${corteResults.actualCash.toFixed(2)}\n`);
+      conector.EscribirTexto(`Tarjeta: $${corteResults.actualCard.toFixed(2)}\n`);
+      conector.EscribirTexto(`Total: $${(corteResults.actualCash + corteResults.actualCard).toFixed(2)}\n`);
+  
+      conector.EscribirTexto("\n");
+      conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
+      conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+  
+      conector.Corte(1);
+      
+      const resultado = await conector.imprimirEn(printerConfig.printerName);
+      if (typeof resultado === 'object' && resultado !== null && 'error' in resultado) {
+        throw new Error(resultado.error);
+      } else if (resultado !== true) {
+        throw new Error('La impresión no se completó correctamente');
+      }
+  
+      toast.success('Ticket de corte impreso correctamente');
+    } catch (error) {
+      console.error('Error al imprimir el ticket de corte:', error);
+      if (error instanceof Error) {
+        toast.error(`Error al imprimir el ticket de corte: ${error.message}`);
+      } else {
+        toast.error('Error desconocido al imprimir el ticket de corte');
       }
     }
   };
@@ -410,14 +465,19 @@ const MobileSalesPage: React.FC = () => {
           actualCard: parseFloat(cardAmountCorte)
         }),
       });
-
+  
       if (!response.ok) {
         throw new Error('Error al realizar el corte');
       }
-
+  
       const data = await response.json();
       setCorteResults(data.data);
       toast.success('Corte realizado exitosamente');
+      
+      // Imprimir el ticket de corte
+      if (isDesktop) {
+        await printCorteTicket(data.data as CorteResults);
+      }
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al realizar el corte');
