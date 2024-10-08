@@ -26,6 +26,7 @@ interface Product {
   imageUrl?: string;
   category: string;
   availability: boolean;
+  ajustado: boolean;
 }
 
 interface ProductCardProps {
@@ -35,15 +36,14 @@ interface ProductCardProps {
 }
 
 const getProductStatus = (product: Product, userLocation: string): 'inStock' | 'available' | 'unavailable' => {
-  const totalStock = product.stockLocations.reduce((sum, location) => sum + location.quantity, 0);
-  const stockInUserLocation = product.stockLocations.find(loc => loc.location === userLocation)?.quantity || 0;
-
-  if (stockInUserLocation > 0) {
-    return 'inStock';
-  } else if (totalStock > 0) {
-    return 'available';
+  if (product.ajustado) {
+    const stockInUserLocation = product.stockLocations.find(loc => loc.location === userLocation)?.quantity || 0;
+    return stockInUserLocation > 0 ? 'inStock' : 'unavailable';
   } else {
-    return 'unavailable';
+    const totalStock = product.stockLocations
+      .filter(loc => loc.location.toUpperCase().startsWith('B'))
+      .reduce((sum, location) => sum + location.quantity, 0);
+    return totalStock > 0 ? 'available' : 'unavailable';
   }
 };
 
@@ -79,7 +79,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, userLocation, userRo
       case 'inStock':
         return <Badge colorScheme="green">Disponible</Badge>;
       case 'available':
-        return <Badge colorScheme="green">Disponible</Badge>;
+        return <Badge colorScheme="green">Disponible en bodega</Badge>;
       case 'unavailable':
         return <Badge colorScheme="black">Sin existencia</Badge>;
     }
@@ -91,10 +91,34 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, userLocation, userRo
     }
   };
 
-  const sortedStockLocations = [
-    ...product.stockLocations.filter(location => location.location === userLocation),
-    ...product.stockLocations.filter(location => location.location !== userLocation),
-  ];
+  const renderInventory = () => {
+    if (product.ajustado) {
+      const userLocationStock = product.stockLocations.find(loc => loc.location === userLocation);
+      if (userLocationStock) {
+        const { boxes, loosePieces } = calculateInventory(userLocationStock.quantity, product.piecesPerBox);
+        return (
+          <Text fontSize="xs" fontWeight="bold">
+            Tu ubicación: {boxes} {boxes === 1 ? 'caja' : 'cajas'}
+            {loosePieces > 0 && ` y ${loosePieces} ${loosePieces === 1 ? 'pieza' : 'piezas'}`}
+            {` (Total: ${userLocationStock.quantity})`}
+          </Text>
+        );
+      }
+      return <Text fontSize="xs">Sin stock en tu ubicación</Text>;
+    } else {
+      const warehouseLocations = product.stockLocations.filter(loc => loc.location.toUpperCase().startsWith('B'));
+      return warehouseLocations.map((location, index) => {
+        const { boxes, loosePieces } = calculateInventory(location.quantity, product.piecesPerBox);
+        return (
+          <Text key={index} fontSize="xs">
+            {location.location}: {boxes} {boxes === 1 ? 'caja' : 'cajas'}
+            {loosePieces > 0 && ` y ${loosePieces} ${loosePieces === 1 ? 'pieza' : 'piezas'}`}
+            {` (Total: ${location.quantity})`}
+          </Text>
+        );
+      });
+    }
+  };
 
   return (
     <Box
@@ -133,17 +157,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, userLocation, userRo
         <Text fontSize="xs">Mayoreo: ${product.price2.toFixed(2)} | Min: {product.price2MinQty}</Text>
         <Text fontSize="xs">Caja: ${product.price3.toFixed(2)} | Min: {product.price3MinQty}</Text>
         <Text fontSize="sm"><strong>Inventario:</strong></Text>
-        {sortedStockLocations.map((location, index) => {
-          const { boxes, loosePieces } = calculateInventory(location.quantity, product.piecesPerBox);
-          const isUserLocation = location.location === userLocation;
-          return (
-            <Text key={index} fontSize="xs" fontWeight={isUserLocation ? 'bold' : 'normal'}>
-              {location.location}: {boxes} {boxes === 1 ? 'caja' : 'cajas'}
-              {loosePieces > 0 && ` y ${loosePieces} ${loosePieces === 1 ? 'pieza' : 'piezas'}`}
-              {` (Total: ${location.quantity})`}
-            </Text>
-          );
-        })}
+        {renderInventory()}
       </VStack>
       
       {(userRole === 'super_administrador' || userRole === 'sistemas') && (

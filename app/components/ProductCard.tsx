@@ -1,3 +1,4 @@
+// components/ProductCard.tsx
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from "@/app/components/ui/button";
@@ -27,6 +28,7 @@ interface ProductCardProps {
   remainingQuantity: number;
   totalStockAcrossLocations: number;
   maxQuantity: number;
+  getCartQuantity: (productId: string) => number;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ 
@@ -38,7 +40,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onAddToCart,
   remainingQuantity,
   totalStockAcrossLocations,
-  maxQuantity
+  maxQuantity,
+  getCartQuantity
 }) => {
   const [localQuantity, setLocalQuantity] = useState(quantity.toString());
   const isAvailable = product.availability && totalStockAcrossLocations > 0;
@@ -47,7 +50,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
     setLocalQuantity(quantity.toString());
   }, [quantity]);
 
-  const handleInputClick = (e: React.MouseEvent<HTMLInputElement>) => {
+  const handleInputSelectAll = (
+    e: React.MouseEvent<HTMLInputElement> | React.FocusEvent<HTMLInputElement>
+  ) => {
     e.currentTarget.select();
   };
 
@@ -60,9 +65,23 @@ const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   const handleUnitTypeChange = (newUnitType: 'pieces' | 'boxes') => {
+    const currentQuantity = parseInt(localQuantity, 10) || 0;
+
+    // Update the unit type
     onUnitTypeChange(newUnitType);
-    setLocalQuantity('');
-    onQuantityChange(0);
+
+    // Recalculate max quantity based on new unit type
+    const availableTotal = Math.max(totalStockAcrossLocations - getCartQuantity(product._id), 0);
+    const adjustedMaxQuantity = newUnitType === 'boxes'
+      ? Math.floor(availableTotal / product.piecesPerBox)
+      : availableTotal;
+
+    // Ensure the current quantity does not exceed the new max
+    const finalQuantity = Math.min(currentQuantity, adjustedMaxQuantity);
+
+    // Update local quantity without resetting
+    setLocalQuantity(finalQuantity.toString());
+    onQuantityChange(finalQuantity);
   };
 
   return (
@@ -108,7 +127,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
               max={maxQuantity}
               value={localQuantity}
               onChange={(e) => handleQuantityChange(e.target.value)}
-              onClick={handleInputClick}
+              onClick={handleInputSelectAll}
+              onFocus={handleInputSelectAll}
               className="w-16 text-center no-spinners"
               aria-label="Cantidad"
               disabled={!isAvailable}

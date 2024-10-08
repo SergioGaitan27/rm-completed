@@ -1,4 +1,4 @@
-// MobileProductCard.tsx
+// components/MobileProductCard.tsx
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -9,7 +9,7 @@ import { Plus, Minus } from 'lucide-react';
 
 interface StockLocation {
   location: string;
-  quantity: string | number; // Permitir string o number
+  quantity: string | number;
 }
 
 interface Product {
@@ -71,20 +71,26 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
     }
   };
 
+  const handleInputSelectAll = (
+    e: React.MouseEvent<HTMLInputElement> | React.FocusEvent<HTMLInputElement>
+  ) => {
+    e.currentTarget.select();
+  };
+
   const handleUnitTypeChange = (newUnitType: 'pieces' | 'boxes') => {
-    // Mantener la cantidad actual
+    // Maintain the current quantity
     const currentQuantity = parseInt(localQuantity, 10) || 0;
 
-    // Calcular el máximo ajustado según la nueva unidad
+    // Calculate the adjusted max based on the new unit
     const availableTotal = Math.max(totalStockAcrossLocations - getCartQuantity(product._id), 0);
     const adjustedMaxQuantity = newUnitType === 'boxes'
       ? Math.floor(availableTotal / product.piecesPerBox)
       : availableTotal;
 
-    // Asegurarse de que la cantidad actual no exceda el máximo ajustado
+    // Ensure the current quantity does not exceed the adjusted max
     const finalQuantity = Math.min(currentQuantity, adjustedMaxQuantity);
 
-    // Actualizar la unidad y la cantidad
+    // Update the unit and quantity
     onUnitTypeChange(newUnitType);
     setLocalQuantity(finalQuantity.toString());
     onQuantityChange(finalQuantity);
@@ -99,17 +105,17 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
 
   const currentPrice = calculateCurrentPrice();
 
-  // Calcular el total de piezas basado en la unidad seleccionada
+  // Calculate the total pieces based on the selected unit
   const totalPieces = unitType === 'boxes' ? quantity * product.piecesPerBox : quantity;
 
-  // Obtener la cantidad ya en el carrito para este producto
+  // Get the quantity already in the cart for this product
   const cartQuantity = getCartQuantity(product._id);
 
-  // Calcular las cantidades disponibles restando lo que ya está en el carrito
+  // Calculate the available quantities subtracting what's already in the cart
   const availableLocation = Math.max(remainingQuantity - cartQuantity, 0);
   const availableTotal = Math.max(totalStockAcrossLocations - cartQuantity, 0);
 
-  // Determinar el máximo que se puede seleccionar sin exceder el inventario
+  // Determine the maximum that can be selected without exceeding inventory
   const adjustedMaxQuantity = unitType === 'boxes'
     ? Math.floor(availableTotal / product.piecesPerBox)
     : availableTotal;
@@ -147,6 +153,8 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
               type="number"
               value={localQuantity}
               onChange={(e) => handleQuantityChange(e.target.value)}
+              onClick={handleInputSelectAll}
+              onFocus={handleInputSelectAll}
               min={0}
               max={adjustedMaxQuantity}
               className="w-16 text-center"

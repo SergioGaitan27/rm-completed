@@ -1,6 +1,7 @@
+// components/ProductInfo.tsx
 'use client'
 
-import React from 'react';
+import React, { useImperativeHandle, useRef, forwardRef } from 'react';
 import Image from 'next/image';
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -23,23 +24,28 @@ interface ProductInfoProps {
   getTotalStockAcrossLocations: (product: Product) => number;
 }
 
-const ProductInfo: React.FC<ProductInfoProps> = ({
-  searchTermBottom,
-  handleSearchBottomChange,
-  handleKeyPressBottom,
-  handleSearchBottom,
-  filteredProducts,
-  handleSelectProduct,
-  productInfoBottom,
-  getRemainingQuantity,
-  isProductAvailable,
-  handleAddFromDetails,
-  productSearchedFromBottom,
-  calculateStockDisplay,
-  getCartQuantity,
-  getTotalStockAcrossLocations
-}) => {
+const ProductInfo = forwardRef<HTMLInputElement, ProductInfoProps>((props, ref) => {
+  const {
+    searchTermBottom,
+    handleSearchBottomChange,
+    handleKeyPressBottom,
+    handleSearchBottom,
+    filteredProducts,
+    handleSelectProduct,
+    productInfoBottom,
+    getRemainingQuantity,
+    isProductAvailable,
+    handleAddFromDetails,
+    productSearchedFromBottom,
+    calculateStockDisplay,
+    getCartQuantity,
+    getTotalStockAcrossLocations
+  } = props;
 
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Expose the input's ref to the parent component
+  useImperativeHandle(ref, () => inputRef.current!);
 
   const getAvailableQuantityTotal = (product: Product) => {
     const totalQuantity = getTotalStockAcrossLocations(product);
@@ -57,6 +63,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
           onChange={handleSearchBottomChange}
           onKeyDown={handleKeyPressBottom}
           className="flex-grow"
+          ref={inputRef}
         />
         <Button
           onClick={() => handleSearchBottom(searchTermBottom)}
@@ -117,26 +124,10 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
                       Disponible para venta: {getAvailableQuantityTotal(productInfoBottom)} piezas
                     </p>
                   </div>
-                  
-                  {/* Aquí puedes agregar más detalles sobre el stock si lo deseas */}
                 </>
               ) : (
                 <p></p>
               )}
-
-              {/* Comentado el detalle por ubicaciones */}
-              {/* <h4 className="font-bold mt-4">Detalle por ubicaciones:</h4>
-              <ul className="mt-2">
-                {calculateStockDisplay(productInfoBottom.stockLocations, productInfoBottom.piecesPerBox).map((location, index) => (
-                  <li key={index} className="mb-1">
-                    <span className="font-semibold">{location.location}:</span> 
-                    {location.boxes > 0 && ` ${location.boxes} ${location.boxes === 1 ? 'caja' : 'cajas'}`}
-                    {location.boxes > 0 && location.loosePieces > 0 && ' y'}
-                    {location.loosePieces > 0 && ` ${location.loosePieces} ${location.loosePieces === 1 ? 'pieza' : 'piezas'}`}
-                    {' | Total: '}{location.total} {location.total === 1 ? 'pieza' : 'piezas'}
-                  </li>
-                ))}
-              </ul> */}
             </div>
           </div>
           {productSearchedFromBottom && (
@@ -158,6 +149,6 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
       )}
     </>
   );
-};
+});
 
 export default ProductInfo;

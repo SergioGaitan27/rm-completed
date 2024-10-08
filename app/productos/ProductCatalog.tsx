@@ -59,6 +59,7 @@ interface Product {
   imageUrl?: string;
   category: string;
   availability: boolean;
+  ajustado: boolean;
 }
 
 type StockStatusType = 'all' | 'inStock' | 'available' | 'unavailable';
@@ -146,18 +147,45 @@ const ProductCatalog: React.FC = () => {
     }
   }, [status, fetchProducts, fetchUserLocation, router]);
 
-  const getProductStatus = useCallback((product: Product, userLocation: string): StockStatusType => {
-    const totalStock = product.stockLocations.reduce((sum, location) => sum + location.quantity, 0);
-    const stockInUserLocation = product.stockLocations.find(loc => loc.location === userLocation)?.quantity || 0;
-
-    if (stockInUserLocation > 0) {
-      return 'inStock';
-    } else if (totalStock > 0) {
-      return 'available';
-    } else {
-      return 'unavailable';
+  const getTotalStockAcrossLocations = useCallback((product: Product): number => {
+    if (!product.stockLocations) {
+      console.warn(`El producto ${product.name} no tiene información de stock`);
+      return 0;
     }
-  }, []);
+  
+    // Obtener la ubicación actual del usuario
+    const userLocation = session?.user?.location || '';
+  
+    // Filtrar ubicaciones basadas en el campo 'ajustado'
+    const relevantLocations = product.stockLocations.filter(location => {
+      if (product.ajustado) {
+        return location.location === userLocation;
+      } else {
+        return location.location.toUpperCase().startsWith('B');
+      }
+    });
+  
+    // Sumar las cantidades de las ubicaciones filtradas
+    return relevantLocations.reduce((total, location) => {
+      const quantity = Number(location.quantity);
+      return total + (isNaN(quantity) ? 0 : quantity);
+    }, 0);
+  }, [session]);
+
+  const getProductStatus = useCallback((product: Product): StockStatusType => {
+    const totalStock = getTotalStockAcrossLocations(product);
+    const stockInUserLocation = product.stockLocations.find(loc => loc.location === userLocation)?.quantity || 0;
+  
+    if (product.ajustado) {
+      return stockInUserLocation > 0 ? 'inStock' : 'unavailable';
+    } else {
+      if (totalStock > 0) {
+        return 'available';
+      } else {
+        return 'unavailable';
+      }
+    }
+  }, [getTotalStockAcrossLocations, userLocation]);
 
   const filterProducts = useMemo(() => {
     return () => {
@@ -166,28 +194,33 @@ const ProductCatalog: React.FC = () => {
           product.boxCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
           product.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
           product.name.toLowerCase().includes(searchTerm.toLowerCase());
-
-        const status = getProductStatus(product, userLocation);
-
+  
+        const status = getProductStatus(product);
+  
         const matchesCategory = 
           activeCategory === 'all' || 
           product.category === activeCategory;
-
+  
         const matchesAvailability = 
           activeAvailability === 'all' || 
           (activeAvailability === 'available' && product.availability) ||
           (activeAvailability === 'unavailable' && !product.availability);
-
+  
         const matchesStockStatus = 
           activeStockStatus === 'all' || 
           status === activeStockStatus;
-
+  
         return matchesSearch && matchesCategory && matchesAvailability && matchesStockStatus;
       });
-      setFilteredProducts(filtered);
-    };
-  }, [searchTerm, products, activeCategory, activeAvailability, activeStockStatus, userLocation, getProductStatus]);
 
+
+      // Ordenar los productos filtrados alfabéticamente por código de caja
+      const sortedFiltered = filtered.sort((a, b) => a.name.localeCompare(b.name));
+
+      setFilteredProducts(sortedFiltered);
+    };
+  }, [searchTerm, products, activeCategory, activeAvailability, activeStockStatus, getProductStatus]);
+  
   useEffect(() => {
     filterProducts();
   }, [filterProducts]);
@@ -327,7 +360,7 @@ const ProductCatalog: React.FC = () => {
             >
               <option value="all">Todos</option>
               <option value="inStock">Con existencia en tu ubicación</option>
-              <option value="available">Existencia en otras ubicaciones</option>
+              <option value="available">Existencia en bodegas</option>
               <option value="unavailable">Sin existencia</option>
             </Select>
           </VStack>

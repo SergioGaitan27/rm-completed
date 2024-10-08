@@ -14,20 +14,24 @@ import { Product, CartItem, IBusinessInfo, IStockLocation } from '@/app/types/pr
 import PriceAdjustmentModal from '@/app/components/PriceAdjustmentModal';
 import ProductInfo from '@/app/components/ProductInfo';
 import ConectorPluginV3 from '@/app/utils/ConectorPluginV3';
+import { Dialog, DialogContent } from '@/app/components/ui/dialog';
 
 const MobileConfirmModal = lazy(() => import('@/app/components/MobileConfirmModal'));
 const PaymentModal = lazy(() => import('@/app/components/PaymentModal'));
 const CorteModal = lazy(() => import('@/app/components/CorteModal'));
 const CorteConfirmationModal = lazy(() => import('@/app/components/CorteConfirmationModal'));
+const CashOutModal = lazy(() => import('@/app/components/CashOutModal'));
+const CashInModal = lazy(() => import('@/app/components/CashInModal'));
+
 
 interface AdjustedCartItem extends CartItem {
     adjustedPrice?: number;
 }
 
 interface CorteResults {
+  location: string;
   actualCash: number;
   actualCard: number;
-  // Añade aquí otras propiedades si las hay
 }
 
 const groupCartItems = (cart: CartItem[]): Record<string, CartItem[]> => {
@@ -108,10 +112,7 @@ const MobileSalesPage: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [deviceId, setDeviceId] = useState<string>('');
   const [gpsCoordinates, setGpsCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
-  
-  useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cart));
-  }, [cart]);
+  const searchInputBottomRef = useRef<HTMLInputElement>(null);
   const [isMobileConfirmModalOpen, setIsMobileConfirmModalOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [paymentType, setPaymentType] = useState<'cash' | 'card'>('cash');
@@ -135,6 +136,19 @@ const MobileSalesPage: React.FC = () => {
     printerName: '',
     paperSize: '80mm',
   });
+  const [selectedCartProduct, setSelectedCartProduct] = useState<Product | null>(null);
+  const [isCashOutModalOpen, setIsCashOutModalOpen] = useState(false);
+  const [isCashInModalOpen, setIsCashInModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchInputBottomRef.current) {
+      searchInputBottomRef.current.focus();
+    }
+  }, []);
+  
+  useEffect(() => {
+    localStorage.setItem('cart', JSON.stringify(cart));
+  }, [cart]);
 
   useEffect(() => {
     // Cargar la configuración de la impresora
@@ -228,23 +242,55 @@ const MobileSalesPage: React.FC = () => {
     }
   
     try {
-      const conector = new ConectorPluginV3(undefined, 'YmEwNzRiYWFfXzIwMjQtMDctMTBfXzIwMjQtMTAtMDgjIyMxUXJaS2xpWjVjbU01VEVmckg5Zm93RWxWOHVmQmhYNjVFQnE1akVFMzBZWG51QUs5YUd0U3Ayc2d0N2E0a1ZiOExEMm1EV2NnTjJhTWR0dDhObUw2bFBLTERGYjBXYkFpTTBBNjJTYlo5KzBLRUVLMzlFeEVLcVR5d2dEcWdsQzUvWlhxZCtxUC9aQ1RnL2M5UVhKRUxJRXVYOGVRU0dxZlg4UFF1MkFiY3doME5mdUdYaitHVk1LMzRvcmRDN0FEeTg4ZStURmlQRktrRW9UcnBMSisrYkJQTC8wZ1ZZdFIxdTNGV3dYQWR0Ylg3U25paU5qZ0I5QmNTQlZRRmp5NWRGYUVyODFnak1UR2VPWHB6T2xMZUhWWmJFVUJCQkhEOENyUGJ4NlNQYXBxOHA1NVlCNS9IZkJ0VWpsSDdMa1JocGlBSWF6Z2hVdzRPMFZ6aVZ6enpVbHNnR091VElWdTdaODRvUDlvWjg5bGI5djIxbTcwSDB4L1ZqSXlGNU52b2JTemoyNXMzL3NxS2I1SEtYVHduVW5tTXBvcWxGZmwwajZXM1ZFQnhkdjh2Y2VRMWtaSWkyY1ZWbjNUK29tTkJLWFRkR0NQSS9UaWgyaWNWdFlQZ05IbENxUXBBK0c3ZHFBUTd4VEh6TEJuT2dMemU2THZuRkpRajBpZkt0dlNHNDNzVU82bmRUaS8zbHpta1orK2lIWmVZR3pIampKWnV5RFRRbEo2MUpOamVYUWpHMTliREFaNFZ3SDhJanBWOEUyRERBLzVDcEYwL1l5MTByTTdlT0t0K1JaTWFlc3pHbkRpeXoydHpRK0Z4ZjNrdFV3U1ZFbCtCcFQ2Y1NLSzVNaFFjWDJjMmlrcWpCbVZSNDBzSVhKMjV1VXB1Nko0L1liMzgzNE1iWT0=');
-  
+      const conector = new ConectorPluginV3(undefined, 'YOUR_CONNECTION_STRING');
+      
       await conector.Iniciar();
       let anchoCaracteres = 48; // Por defecto para 80mm
+  
+      switch (printerConfig.paperSize) {
+        case '58mm':
+          anchoCaracteres = 32;
+          break;
+        case '80mm':
+          anchoCaracteres = 48;
+          break;
+        case 'A4':
+          anchoCaracteres = 64;
+          break;
+      }
   
       conector.EstablecerEnfatizado(true);
       conector.EstablecerTamañoFuente(2, 2);
       conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
       conector.EscribirTexto("TICKET DE CORTE\n\n");
       conector.EstablecerTamañoFuente(1, 1);
-      conector.EstablecerEnfatizado(false);
-  
-      conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
+      conector.EscribirTexto(`Ubicación: ${corteResults.location}\n`); // Añadir línea
       conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
+      conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+  
+      // Montos ingresados por el usuario
+      conector.EscribirTexto("Montos ingresados:\n");
+      conector.EscribirTexto(`Efectivo: $${parseFloat(cashAmountCorte).toFixed(2)}\n`);
+      conector.EscribirTexto(`Tarjeta: $${parseFloat(cardAmountCorte).toFixed(2)}\n`);
+      conector.EscribirTexto(`Total ingresado: $${(parseFloat(cashAmountCorte) + parseFloat(cardAmountCorte)).toFixed(2)}\n`);
+      conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+  
+      // Resultados esperados
+      conector.EscribirTexto("Resultados esperados:\n");
       conector.EscribirTexto(`Efectivo: $${corteResults.actualCash.toFixed(2)}\n`);
       conector.EscribirTexto(`Tarjeta: $${corteResults.actualCard.toFixed(2)}\n`);
-      conector.EscribirTexto(`Total: $${(corteResults.actualCash + corteResults.actualCard).toFixed(2)}\n`);
+      conector.EscribirTexto(`Total esperado: $${(corteResults.actualCash + corteResults.actualCard).toFixed(2)}\n`);
+      conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+  
+      // Diferencias
+      const cashDifference = parseFloat(cashAmountCorte) - corteResults.actualCash;
+      const cardDifference = parseFloat(cardAmountCorte) - corteResults.actualCard;
+      const totalDifference = cashDifference + cardDifference;
+  
+      conector.EscribirTexto("Diferencias:\n");
+      conector.EscribirTexto(`Efectivo: $${cashDifference.toFixed(2)} (${cashDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
+      conector.EscribirTexto(`Tarjeta: $${cardDifference.toFixed(2)} (${cardDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
+      conector.EscribirTexto(`Total: $${totalDifference.toFixed(2)} (${totalDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
   
       conector.EscribirTexto("\n");
       conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
@@ -377,6 +423,52 @@ const MobileSalesPage: React.FC = () => {
     toast.success(`Precio ${priceType === 'regular' ? 'regular' : priceType} aplicado a todos los productos`);
   };
 
+  const handleOpenCashOutModal = () => {
+    setIsCashOutModalOpen(true);
+  };
+
+  const handleCloseCashOutModal = () => {
+    setIsCashOutModalOpen(false);
+  };
+
+  const handleOpenCashInModal = () => {
+    setIsCashInModalOpen(true);
+  };
+
+  const handleCloseCashInModal = () => {
+    setIsCashInModalOpen(false);
+  };
+
+  const handleCashOutSubmit = async (amount: number, concept: string) => {
+    try {
+      const response = await fetch('/api/cashMovements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: -amount, concept, type: 'out', location: session?.user?.location }),
+      });
+      if (!response.ok) throw new Error('Error al registrar la salida de efectivo');
+      toast.success('Salida de efectivo registrada');
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al registrar la salida de efectivo');
+    }
+  };
+
+  const handleCashInSubmit = async (amount: number, concept: string) => {
+    try {
+      const response = await fetch('/api/cashMovements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, concept, type: 'in', location: session?.user?.location }),
+      });
+      if (!response.ok) throw new Error('Error al registrar la entrada de efectivo');
+      toast.success('Entrada de efectivo registrada');
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al registrar la entrada de efectivo');
+    }
+  };
+
   const handleCorteCommand = () => {
     setIsCorteModalOpen(true);
     setCashAmountCorte('');
@@ -390,12 +482,23 @@ const MobileSalesPage: React.FC = () => {
     switch (searchTerm) {
       case 'ACTUALIZAR':
         fetchProducts();
+        setSearchTermTop('');
         break;
       case 'CORTE':
         handleCorteCommand();
+        setSearchTermTop('');
+        break;
+      case 'SALIDA':
+        handleOpenCashOutModal();
+        setSearchTermTop('');
+        break;
+      case 'ENTRADA':
+        handleOpenCashInModal();
+        setSearchTermTop('');
         break;
       case 'P-MAYOREO':
         applyPriceToCart('mayoreo');
+        setSearchTermTop('');
         break;
       case 'P-CAJA':
         applyPriceToCart('caja');
@@ -440,52 +543,55 @@ const MobileSalesPage: React.FC = () => {
         setSearchTermTop('');
       };
 
-  const handleCorte = async () => {
-    const cashAmount = parseFloat(cashAmountCorte);
-    const cardAmount = parseFloat(cardAmountCorte);
-
-    if (isNaN(cashAmount) || isNaN(cardAmount)) {
-      toast.error('Por favor, ingrese montos válidos para efectivo y tarjeta.');
-      return;
-    }
-    setShowCorteConfirmation(true);
-  };
-
-  const confirmCorte = async () => {
-    setIsCorteLoading(true);
-    try {
-      const response = await fetch('/api/corte', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          location: session?.user?.location || '',
-          actualCash: parseFloat(cashAmountCorte),
-          actualCard: parseFloat(cardAmountCorte)
-        }),
-      });
-  
-      if (!response.ok) {
-        throw new Error('Error al realizar el corte');
-      }
-  
-      const data = await response.json();
-      setCorteResults(data.data);
-      toast.success('Corte realizado exitosamente');
+      const handleCorte = async () => {
+        const cashAmount = parseFloat(cashAmountCorte);
+        const cardAmount = parseFloat(cardAmountCorte);
       
-      // Imprimir el ticket de corte
-      if (isDesktop) {
-        await printCorteTicket(data.data as CorteResults);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error al realizar el corte');
-    } finally {
-      setIsCorteLoading(false);
-      setShowCorteConfirmation(false);
-    }
-  };
+        if (isNaN(cashAmount) || isNaN(cardAmount)) {
+          toast.error('Por favor, ingrese montos válidos para efectivo y tarjeta.');
+          return;
+        }
+        setShowCorteConfirmation(true);
+      };
+      
+      const confirmCorte = async () => {
+        setIsCorteLoading(true);
+        try {
+          const response = await fetch('/api/corte', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              location: session?.user?.location || '',
+              actualCash: parseFloat(cashAmountCorte),
+              actualCard: parseFloat(cardAmountCorte),
+            }),
+          });
+      
+          if (!response.ok) {
+            throw new Error('Error al realizar el corte');
+          }
+      
+          const data = await response.json();
+          setCorteResults(data.data);
+          toast.success('Corte realizado exitosamente');
+          
+          // Imprimir el ticket de corte
+          if (isDesktop) {
+            await printCorteTicket(data.data as CorteResults);
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          toast.error('Error al realizar el corte');
+        } finally {
+          setIsCorteLoading(false);
+          setShowCorteConfirmation(false);
+          closeCorteModal();
+          
+        }
+      };
+      
 
   const closeCorteModal = () => {
     setIsCorteModalOpen(false);
@@ -548,8 +654,15 @@ const MobileSalesPage: React.FC = () => {
     setSelectedProduct(product);
     setUnitType('pieces');
     setQuantity(1);
-    if (quantityInputRef.current) {
-      quantityInputRef.current.focus();
+    if (searchInputBottomRef.current) {
+      searchInputBottomRef.current.focus();
+    }
+  };
+
+  const handleCartProductClick = (productId: string) => {
+    const product = products.find(p => p._id === productId);
+    if (product) {
+      setSelectedCartProduct(product);
     }
   };
 
@@ -1007,8 +1120,8 @@ const MobileSalesPage: React.FC = () => {
         toast.success('Pago procesado exitosamente');
         setProductInfoBottom(null);
         setSearchTermBottom('');
-        if (searchInputRef.current) {
-          searchInputRef.current.focus();
+        if (searchInputBottomRef.current) {
+          searchInputBottomRef.current.focus();
         }
       } else {
         throw new Error(result.message || 'Error desconocido al procesar el ticket');
@@ -1071,6 +1184,7 @@ const MobileSalesPage: React.FC = () => {
                   maxQuantity={unitType === 'boxes' 
                     ? Math.floor(getTotalStockAcrossLocations(selectedProduct) / selectedProduct.piecesPerBox)
                     : getTotalStockAcrossLocations(selectedProduct)}
+                  getCartQuantity={getCartQuantity} 
                 />
               ) : (
                 <MobileProductCard
@@ -1103,22 +1217,23 @@ const MobileSalesPage: React.FC = () => {
                 <CardTitle>Información de productos</CardTitle>
               </CardHeader>
               <CardContent className="flex-grow overflow-y-auto">
-                <ProductInfo
-                  searchTermBottom={searchTermBottom}
-                  handleSearchBottomChange={handleSearchBottomChange}
-                  handleKeyPressBottom={handleKeyPressBottom}
-                  handleSearchBottom={handleSearchBottom}
-                  filteredProducts={filteredProducts}
-                  handleSelectProduct={handleSelectProduct}
-                  productInfoBottom={productInfoBottom}
-                  isProductAvailable={isProductAvailable}
-                  handleAddFromDetails={handleAddFromDetails}
-                  productSearchedFromBottom={productSearchedFromBottom}
-                  calculateStockDisplay={calculateStockDisplay}
-                  getRemainingQuantity={getRemainingQuantity}
-                  getCartQuantity={getCartQuantity}
-                  getTotalStockAcrossLocations={getTotalStockAcrossLocations}
-                />
+              <ProductInfo
+                ref={searchInputBottomRef}
+                searchTermBottom={searchTermBottom}
+                handleSearchBottomChange={handleSearchBottomChange}
+                handleKeyPressBottom={handleKeyPressBottom}
+                handleSearchBottom={handleSearchBottom}
+                filteredProducts={filteredProducts}
+                handleSelectProduct={handleSelectProduct}
+                productInfoBottom={productInfoBottom}
+                getRemainingQuantity={getRemainingQuantity}
+                isProductAvailable={isProductAvailable}
+                handleAddFromDetails={handleAddFromDetails}
+                productSearchedFromBottom={productSearchedFromBottom}
+                calculateStockDisplay={calculateStockDisplay}
+                getCartQuantity={getCartQuantity}
+                getTotalStockAcrossLocations={getTotalStockAcrossLocations}
+              />
               </CardContent>
             </Card>
           )}
@@ -1137,7 +1252,12 @@ const MobileSalesPage: React.FC = () => {
                     const appliedPrice = items[0].appliedPrice;
                     return (
                       <div key={productId} className="p-3 bg-gray-100 rounded-lg">
-                        <h3 className="font-bold text-lg mb-2">{items[0].name}</h3>
+                        <h3
+                          className="font-bold text-lg mb-2 cursor-pointer hover:underline"
+                          onClick={() => handleCartProductClick(items[0]._id)}
+                        >
+                          {items[0].name}
+                        </h3>
                         <p>
                           {boxes > 0 && `${boxes} ${boxes === 1 ? 'caja' : 'cajas'} (${boxes * items[0].piecesPerBox} ${boxes * items[0].piecesPerBox === 1 ? 'pieza' : 'piezas'})`}
                           {boxes > 0 && loosePieces > 0 && ' + '}
@@ -1162,6 +1282,15 @@ const MobileSalesPage: React.FC = () => {
                 </div>
               ) : (
                 <p>El carrito está vacío.</p>
+              )}
+      
+              {/* Modal to display product image */}
+              {selectedCartProduct && (
+                <Dialog open={true} onOpenChange={() => setSelectedCartProduct(null)}>
+                  <DialogContent>
+                    <img src={selectedCartProduct.imageUrl} alt={selectedCartProduct.name} className="w-full h-auto" />
+                  </DialogContent>
+                </Dialog>
               )}
             </CardContent>
             
@@ -1241,6 +1370,18 @@ const MobileSalesPage: React.FC = () => {
           cardAmount={cardAmountCorte}
           isCorteLoading={isCorteLoading}
           onConfirm={confirmCorte}
+        />
+        <CashOutModal
+          isOpen={isCashOutModalOpen}
+          onClose={handleCloseCashOutModal}
+          onSubmit={handleCashOutSubmit}
+          location={session?.user?.location || ''} // Pasar location
+        />
+        <CashInModal
+          isOpen={isCashInModalOpen}
+          onClose={handleCloseCashInModal}
+          onSubmit={handleCashInSubmit}
+          location={session?.user?.location || ''} // Pasar location
         />
       </Suspense>
     </div>

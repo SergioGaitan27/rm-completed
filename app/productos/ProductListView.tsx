@@ -37,6 +37,7 @@ interface Product {
   imageUrl?: string;
   category: string;
   availability: boolean;
+  ajustado: boolean;
 }
 
 interface ProductListViewProps {
@@ -46,15 +47,14 @@ interface ProductListViewProps {
 }
 
 const getProductStatus = (product: Product, userLocation: string): 'inStock' | 'available' | 'unavailable' => {
-  const totalStock = product.stockLocations.reduce((sum, location) => sum + location.quantity, 0);
-  const stockInUserLocation = product.stockLocations.find(loc => loc.location === userLocation)?.quantity || 0;
-
-  if (stockInUserLocation > 0) {
-    return 'inStock';
-  } else if (totalStock > 0) {
-    return 'available';
+  if (product.ajustado) {
+    const stockInUserLocation = product.stockLocations.find(loc => loc.location === userLocation)?.quantity || 0;
+    return stockInUserLocation > 0 ? 'inStock' : 'unavailable';
   } else {
-    return 'unavailable';
+    const totalStock = product.stockLocations
+      .filter(loc => loc.location.toUpperCase().startsWith('B'))
+      .reduce((sum, location) => sum + location.quantity, 0);
+    return totalStock > 0 ? 'available' : 'unavailable';
   }
 };
 
@@ -71,7 +71,7 @@ const ProductListView: React.FC<ProductListViewProps> = ({ products, userLocatio
       case 'inStock':
         return <Badge colorScheme="green" variant="solid" fontSize="xs" px={2}>Disponible</Badge>;
       case 'available':
-        return <Badge colorScheme="yellow" variant="solid" fontSize="xs" px={2}>Otras ubicaciones</Badge>;
+        return <Badge colorScheme="yellow" variant="solid" fontSize="xs" px={2}>Disponible en bodega</Badge>;
       case 'unavailable':
         return <Badge colorScheme="red" variant="solid" fontSize="xs" px={2}>Sin existencia</Badge>;
     }
@@ -81,6 +81,33 @@ const ProductListView: React.FC<ProductListViewProps> = ({ products, userLocatio
     if (imageUrl) {
       setSelectedImage(imageUrl);
       onOpen();
+    }
+  };
+
+  const renderInventory = (product: Product) => {
+    if (product.ajustado) {
+      const userLocationStock = product.stockLocations.find(loc => loc.location === userLocation);
+      if (userLocationStock) {
+        return (
+          <Text fontSize="sm">
+            <Text as="span" fontWeight="bold" color="blue">{userLocation}:</Text> {userLocationStock.quantity}
+          </Text>
+        );
+      }
+      return <Text fontSize="sm">Sin stock en tu ubicación</Text>;
+    } else {
+      return (
+        <Text fontSize="sm">
+          {product.stockLocations
+            .filter(location => location.location.toUpperCase().startsWith('B'))
+            .map((location, index) => (
+              <React.Fragment key={index}>
+                <Text as="span" fontWeight="bold" color="blue">{location.location}:</Text> {location.quantity}
+                {index < product.stockLocations.filter(loc => loc.location.toUpperCase().startsWith('B')).length - 1 && <br />}
+              </React.Fragment>
+            ))}
+        </Text>
+      );
     }
   };
 
@@ -122,23 +149,16 @@ const ProductListView: React.FC<ProductListViewProps> = ({ products, userLocatio
                 {getAvailabilityBadge(product)}
               </Td>
               <Td>
-                <Text fontSize="sm">
-                  {product.stockLocations.map((location, index) => (
-                    <React.Fragment key={index}>
-                      <Text textColor="blue" fontWeight="bold">{location.location}:</Text> {location.quantity}
-                      {index < product.stockLocations.length - 1 && <br />}
-                    </React.Fragment>
-                  ))}
-                </Text>
+                {renderInventory(product)}
               </Td>
               {userRole === 'super_administrador' && (
                 <>
                   <Td>${product.cost.toFixed(2)}</Td>
                 </>
               )}
-            <Td>${product.price1.toFixed(2)}</Td>
-            <Td>${product.price2.toFixed(2)}</Td>
-            <Td>${product.price3.toFixed(2)}</Td>
+              <Td>${product.price1.toFixed(2)}</Td>
+              <Td>${product.price2.toFixed(2)}</Td>
+              <Td>${product.price3.toFixed(2)}</Td>
             </Tr>
           ))}
         </Tbody>
