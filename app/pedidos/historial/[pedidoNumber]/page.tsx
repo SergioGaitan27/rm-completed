@@ -89,38 +89,31 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
   };
 
   const handleSurtirPedido = async () => {
-    if (!evidenceImage) {
-      toast({
-        title: "Error",
-        description: "Por favor, sube una imagen de evidencia antes de marcar como surtido.",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
     setIsUploading(true);
 
     try {
-      // Upload image to Cloudinary
-      const formData = new FormData();
-      formData.append('file', evidenceImage);
-      formData.append('upload_preset', 'xgmwzgac');
+      let imageUrl = null;
 
-      const imageResponse = await fetch('https://api.cloudinary.com/v1_1/dpsrtoyp7/image/upload', {
-        method: 'POST',
-        body: formData
-      });
+      if (evidenceImage) {
+        // Subir imagen a Cloudinary si se proporciona una imagen
+        const formData = new FormData();
+        formData.append('file', evidenceImage);
+        formData.append('upload_preset', 'xgmwzgac');
 
-      if (!imageResponse.ok) {
-        throw new Error('Error al subir la imagen de evidencia');
+        const imageResponse = await fetch('https://api.cloudinary.com/v1_1/dpsrtoyp7/image/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!imageResponse.ok) {
+          throw new Error('Error al subir la imagen de evidencia');
+        }
+
+        const imageData = await imageResponse.json();
+        imageUrl = imageData.secure_url;
       }
 
-      const imageData = await imageResponse.json();
-      const imageUrl = imageData.secure_url;
-
-      // Update pedido status and add evidence image URL
+      // Actualizar el estado del pedido y agregar la URL de la imagen de evidencia si está disponible
       const response = await fetch(`/api/pedidos/${params.pedidoNumber}`, {
         method: 'PATCH',
         headers: {
@@ -135,13 +128,15 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
 
       toast({
         title: "Pedido actualizado",
-        description: "El pedido ha sido marcado como surtido y se ha subido la imagen de evidencia.",
+        description: imageUrl 
+          ? "El pedido ha sido marcado como surtido y se ha subido la imagen de evidencia."
+          : "El pedido ha sido marcado como surtido sin imagen de evidencia.",
         status: "success",
         duration: 3000,
         isClosable: true,
       });
 
-      fetchPedidoDetails(); // Reload pedido details
+      fetchPedidoDetails(); // Recargar detalles del pedido
     } catch (error) {
       console.error('Error al marcar el pedido como surtido:', error);
       toast({
@@ -322,7 +317,7 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
               <CardBody>
                 <Heading as="h2" size="lg" mb={4}>Marcar como surtido</Heading>
                 <VStack spacing={4} align="stretch">
-                  <Text>Sube una imagen como evidencia antes de marcar el pedido como surtido:</Text>
+                  <Text>Opcionalmente, sube una imagen como evidencia antes de marcar el pedido como surtido:</Text>
                   <Input
                     type="file"
                     accept="image/*"
@@ -342,10 +337,9 @@ const PedidoDetallePage = ({ params }: { params: { pedidoNumber: string } }) => 
                     onClick={handleSurtirPedido}
                     colorScheme="green"
                     isLoading={isUploading}
-                    loadingText="Subiendo..."
-                    isDisabled={!evidenceImage}
+                    loadingText="Procesando..."
                   >
-                    Marcar como Surtido y Subir Evidencia
+                    Marcar como Surtido {evidenceImage ? "y Subir Evidencia" : ""}
                   </Button>
                 </VStack>
               </CardBody>
