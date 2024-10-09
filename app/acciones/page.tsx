@@ -28,11 +28,24 @@ interface AdjustedCartItem extends CartItem {
     adjustedPrice?: number;
 }
 
+interface CashMovement {
+  amount: number;
+  concept: string;
+  type: 'in' | 'out';
+  date: string; // O Date, dependiendo de cómo lo manejes
+  location: string;
+}
+
 interface CorteResults {
   location: string;
+  expectedCash: number;
+  expectedCard: number;
   actualCash: number;
   actualCard: number;
+  totalTickets: number;
+  cashMovements: CashMovement[]; // Nueva propiedad
 }
+
 
 const groupCartItems = (cart: CartItem[]): Record<string, CartItem[]> => {
   return cart.reduce((acc, item) => {
@@ -235,92 +248,177 @@ const MobileSalesPage: React.FC = () => {
     }
   };
 
-      const printCorteTicket = async (
-        corteResults: CorteResults,
-        cashAmount: number,
-        cardAmount: number
-      ) => {
-        if (!corteResults) {
-          toast.error('No hay resultados de corte para imprimir');
-          return;
-        }
-      
-        try {
-          const conector = new ConectorPluginV3(undefined, 'YmEwNzRiYWFfXzIwMjQtMTAtMDhfXzIwMjUtMDEtMDYjIyNaVVQ5amo0ckQ1bi9DL2I2Zk1Mb002N2F4TFd4UXJBMndFWkQ1TEtoNGhhN1B1NVFjc2FVY2Uvb1l4Vjdudk43NThzWk5kdUFoU3BJWnA4SkZLejJ2aHRlOGwzcnlZV00zVXpRajNiS2xWc1VPeFhMUDQrZmFHd1JrWDRLZERLaDFtekdBZWZWa2d6Wmg5ZEV3c1NxVHkxZkMwVW5rMnU5OVdGQ0laaDI4eGpYaU1qRzVCMGVPN1lNVG5YZUtLU1A4L2swMFplOGxaMUtGQ2hraHNyZmtJcWhKYnZJTHU3MWRzR2JsWDllTVIweVpVdEkzeXVwTC93Y2ZQRjVDVmZma1d6UUEwVlhENGRFbTlTOXgwU09QaXdpcDdDUWs1Y0lTbk9zMkFjT1V4Z3NBYUNKUkNFcXZZN3ZOZy9IbkRnays1WW5Zemo5WnZ1QmQwUjdTSWs2SjMwMENoZzZESnovZVZxSEttZVFaZWV6KzR2ZFd6WDJiWlhFdm51Z1ZiTmRZOWJmcnpkNHBVTDBRalBEbXNIQmhKS0JqU3l1TDhPd2RtemdKOGhYcUJIUnpqQzdsMUN6R1MyeTRCRGR3WmwrYm5CMGpjeVUxUGFxaFBXNmhEOFQzTnNEQkVqTTREdTlJMk9HVlFSRDVUdHdZS2VsaXBPY2hidVNaa1ZIdkFtQVF2UURrZHBqQkVWb0Y3MjJkenQ3a25YeGdrSTBDWG8rZEpqNFlMMWE4UmtmQSs1NzNDZE9NQnFnN0YxUEtod2xOa2V4WllqbTFZN0ZlZjV1eFZwUjJsK1dzRUtySXNDcWxsalJZVFZQRURFMWtFQktsVkpTSldUVVVYMGxhNXM0ODV5ZjFwelRBZEZlMi9kSURCZGh4aUc1dUhTQkhhOTdhcUFFcFRBS1RFYz0=');
-      
-          await conector.Iniciar();
-          let anchoCaracteres = 48; // Por defecto para 80mm
-      
-          switch (printerConfig.paperSize) {
-            case '58mm':
-              anchoCaracteres = 32;
-              break;
-            case '80mm':
-              anchoCaracteres = 48;
-              break;
-            case 'A4':
-              anchoCaracteres = 64;
-              break;
-          }
-      
-          console.log('Imprimiendo Corte:', { corteResults, cashAmount, cardAmount });
-      
-          conector.EstablecerEnfatizado(true);
-          conector.EstablecerTamañoFuente(2, 2);
-          conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
-          conector.EscribirTexto("TICKET DE CORTE\n\n");
-          conector.EstablecerTamañoFuente(1, 1);
-          conector.EscribirTexto(`Ubicación: ${corteResults.location}\n`);
-          conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
-          conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-      
-          // Montos ingresados por el usuario
-          conector.EscribirTexto("Montos ingresados:\n");
-          conector.EscribirTexto(`Efectivo: $${cashAmount.toFixed(2)}\n`);
-          conector.EscribirTexto(`Tarjeta: $${cardAmount.toFixed(2)}\n`);
-          conector.EscribirTexto(`Total ingresado: $${(cashAmount + cardAmount).toFixed(2)}\n`);
-          conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-      
-          // Resultados esperados
-          conector.EscribirTexto("Resultados esperados:\n");
-          conector.EscribirTexto(`Efectivo: $${corteResults.actualCash.toFixed(2)}\n`);
-          conector.EscribirTexto(`Tarjeta: $${corteResults.actualCard.toFixed(2)}\n`);
-          conector.EscribirTexto(`Total esperado: $${(corteResults.actualCash + corteResults.actualCard).toFixed(2)}\n`);
-          conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-      
-          // Diferencias
-          const cashDifference = cashAmount - corteResults.actualCash;
-          const cardDifference = cardAmount - corteResults.actualCard;
-          const totalDifference = cashDifference + cardDifference;
-      
-          conector.EscribirTexto("Diferencias:\n");
-          conector.EscribirTexto(`Efectivo: $${cashDifference.toFixed(2)} (${cashDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
-          conector.EscribirTexto(`Tarjeta: $${cardDifference.toFixed(2)} (${cardDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
-          conector.EscribirTexto(`Total: $${totalDifference.toFixed(2)} (${totalDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
-      
-          conector.EscribirTexto("\n");
-          conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
-          conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-      
-          conector.Corte(1);
-      
-          const resultado = await conector.imprimirEn(printerConfig.printerName);
-          if (typeof resultado === 'object' && resultado !== null && 'error' in resultado) {
-            throw new Error(resultado.error);
-          } else if (resultado !== true) {
-            throw new Error('La impresión no se completó correctamente');
-          }
-      
-          toast.success('Ticket de corte impreso correctamente');
-        } catch (error) {
-          console.error('Error al imprimir el ticket de corte:', error);
-          if (error instanceof Error) {
-            toast.error(`Error al imprimir el ticket de corte: ${error.message}`);
-          } else {
-            toast.error('Error desconocido al imprimir el ticket de corte');
-          }
-        }
-      };
+// Ejemplo: printCorteTicket.ts
+
+const printCorteTicket = async (
+  corteResults: CorteResults,
+  cashAmount: number,
+  cardAmount: number
+) => {
+  console.log('printCorteTicket llamado con:', {
+    corteResults,
+    cashAmount,
+    cardAmount,
+  });
+
+  if (!corteResults) {
+    toast.error('No hay resultados de corte para imprimir');
+    console.error('corteResults es null o undefined');
+    return;
+  }
+
+  try {
+    const conector = new ConectorPluginV3(undefined, 'YOUR_CONNECTION_STRING');
+
+    await conector.Iniciar();
+    let anchoCaracteres = 48; // Por defecto para 80mm
+
+    switch (printerConfig.paperSize) {
+      case '58mm':
+        anchoCaracteres = 32;
+        break;
+      case '80mm':
+        anchoCaracteres = 48;
+        break;
+      case 'A4':
+        anchoCaracteres = 64;
+        break;
+      default:
+        anchoCaracteres = 48;
+    }
+
+    console.log('Ancho de caracteres para impresión:', anchoCaracteres);
+
+    // Título del Ticket
+    conector.EstablecerEnfatizado(true);
+    conector.EstablecerTamañoFuente(2, 2);
+    conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
+    conector.EscribirTexto("TICKET DE CORTE\n\n");
+    console.log('Escribiendo "TICKET DE CORTE"');
+
+    // Información Básica
+    conector.EstablecerTamañoFuente(1, 1);
+    conector.EscribirTexto(`Ubicación: ${corteResults.location}\n`);
+    console.log(`Escribiendo Ubicación: ${corteResults.location}`);
+
+    conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
+    console.log(`Escribiendo Fecha: ${new Date().toLocaleString()}`);
+
+    conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+    console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
+
+    // Montos Ingresados
+    conector.EscribirTexto("Montos ingresados:\n");
+    console.log('Escribiendo "Montos ingresados:"');
+
+    conector.EscribirTexto(`Efectivo: $${cashAmount.toFixed(2)}\n`);
+    console.log(`Escribiendo Efectivo ingresado: $${cashAmount.toFixed(2)}`);
+
+    conector.EscribirTexto(`Tarjeta: $${cardAmount.toFixed(2)}\n`);
+    console.log(`Escribiendo Tarjeta ingresada: $${cardAmount.toFixed(2)}`);
+
+    conector.EscribirTexto(`Total ingresado: $${(cashAmount + cardAmount).toFixed(2)}\n`);
+    console.log(`Escribiendo Total ingresado: $${(cashAmount + cardAmount).toFixed(2)}`);
+
+    conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+    console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
+
+    // Resultados Esperados
+    const cashInMovements = corteResults.cashMovements.filter(mov => mov.type === 'in');
+    const totalCashIn = cashInMovements.reduce((sum, mov) => sum + mov.amount, 0);
+    const cashOutMovements = corteResults.cashMovements.filter(mov => mov.type === 'out');
+    const totalCashOut = cashOutMovements.reduce((sum, mov) => sum + mov.amount, 0);
+    const totalSalesCash = corteResults.expectedCash - totalCashIn ;
+    const totalCash = totalSalesCash + totalCashIn;
+    
+    conector.EscribirTexto("Resultados esperados:\n");
+    console.log('Escribiendo "Resultados esperados:"');
+
+    conector.EscribirTexto(`Efectivo Total: $${totalCash.toFixed(2)}\n`);
+    console.log(`Escribiendo Efectivo Total: $${totalCash.toFixed(2)}`);
+    conector.EscribirTexto("Entradas de Efectivo:\n");
+    console.log('Escribiendo "Entradas de Efectivo:"');
+
+    cashInMovements.forEach(mov => {
+      conector.EscribirTexto(`${mov.concept}: $${mov.amount.toFixed(2)}\n`);
+      console.log(`Escribiendo Entrada: ${mov.concept}: $${mov.amount.toFixed(2)}`);
+    });
+
+    conector.EscribirTexto(`Total Entradas: $${totalCashIn.toFixed(2)}\n`);
+    console.log(`Escribiendo Total Entradas: $${totalCashIn.toFixed(2)}`);
+
+    conector.EscribirTexto("Salidas de Efectivo:\n");
+    console.log('Escribiendo "Salidas de Efectivo:"');
+
+    cashOutMovements.forEach(mov => {
+      conector.EscribirTexto(`${mov.concept}: $${mov.amount.toFixed(2)}\n`);
+      console.log(`Escribiendo Salida: ${mov.concept}: $${mov.amount.toFixed(2)}`);
+    });
+
+    conector.EscribirTexto(`Total Salidas: $${totalCashOut.toFixed(2)}\n`);
+    console.log(`Escribiendo Total Salidas: $${totalCashOut.toFixed(2)}`);
+
+    conector.EscribirTexto(`Total de venta: $${totalSalesCash.toFixed(2)}\n`);
+    console.log(`Escribiendo Total de venta: $${totalSalesCash.toFixed(2)}`);
+
+    conector.EscribirTexto(`Total tarjeta: $${corteResults.expectedCard.toFixed(2)}\n`);
+    console.log(`Escribiendo Total tarjeta: $${corteResults.expectedCard.toFixed(2)}`);
+
+    conector.EscribirTexto(`Total esperado: $${(corteResults.expectedCash + corteResults.expectedCard).toFixed(2)}\n`);
+    console.log(`Escribiendo Total esperado: $${(corteResults.expectedCash + corteResults.expectedCard).toFixed(2)}`);
+
+    conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+    console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
+
+    // Diferencias
+    const cashDifference = cashAmount - corteResults.expectedCash;
+    const cardDifference = cardAmount - corteResults.expectedCard;
+    const totalDifference = cashDifference + cardDifference;
+
+    conector.EscribirTexto("Diferencias:\n");
+    console.log('Escribiendo "Diferencias:"');
+
+    conector.EscribirTexto(`Efectivo: $${cashDifference.toFixed(2)} (${cashDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
+    console.log(`Escribiendo Diferencia Efectivo: $${cashDifference.toFixed(2)} (${cashDifference >= 0 ? 'Sobra' : 'Falta'})`);
+
+    conector.EscribirTexto(`Tarjeta: $${cardDifference.toFixed(2)} (${cardDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
+    console.log(`Escribiendo Diferencia Tarjeta: $${cardDifference.toFixed(2)} (${cardDifference >= 0 ? 'Sobra' : 'Falta'})`);
+
+    conector.EscribirTexto(`Total: $${totalDifference.toFixed(2)} (${totalDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
+    console.log(`Escribiendo Diferencia Total: $${totalDifference.toFixed(2)} (${totalDifference >= 0 ? 'Sobra' : 'Falta'})`);
+
+    conector.EscribirTexto("\n");
+    console.log('Escribiendo línea en blanco');
+
+
+    conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+    console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
+
+    // Solicitar Corte de Papel
+    conector.Corte(1);
+    console.log('Solicitando corte de papel');
+
+    // Ejecutar la impresión
+    const resultado = await conector.imprimirEn(printerConfig.printerName);
+    console.log('Resultado de la impresión:', resultado);
+
+    // Manejo de Errores de Impresión
+    if (typeof resultado === 'object' && resultado !== null && 'error' in resultado) {
+      throw new Error(resultado.error);
+    } else if (resultado !== true) {
+      throw new Error('La impresión no se completó correctamente');
+    }
+
+    toast.success('Ticket de corte impreso correctamente');
+  } catch (error: any) {
+    console.error('Error al imprimir el ticket de corte:', error);
+    if (error instanceof Error) {
+      toast.error(`Error al imprimir el ticket de corte: ${error.message}`);
+    } else {
+      toast.error('Error desconocido al imprimir el ticket de corte');
+    }
+  }
+};
 
   useEffect(() => {
     // Generar un ID de dispositivo único si no existe
@@ -563,6 +661,16 @@ const MobileSalesPage: React.FC = () => {
       const confirmCorte = async () => {
         setIsCorteLoading(true);
         try {
+          const cashAmount = parseFloat(cashAmountCorte);
+          const cardAmount = parseFloat(cardAmountCorte);
+      
+          // **Agregar log de los montos ingresados**
+          console.log('Iniciando Corte con los siguientes montos:', {
+            cashAmount,
+            cardAmount,
+            location: session?.user?.location || '',
+          });
+      
           const response = await fetch('/api/corte', {
             method: 'POST',
             headers: {
@@ -570,36 +678,38 @@ const MobileSalesPage: React.FC = () => {
             },
             body: JSON.stringify({
               location: session?.user?.location || '',
-              actualCash: parseFloat(cashAmountCorte),
-              actualCard: parseFloat(cardAmountCorte),
+              actualCash: cashAmount,
+              actualCard: cardAmount,
             }),
           });
       
           if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Respuesta de la API /api/corte no OK:', errorText);
             throw new Error('Error al realizar el corte');
           }
       
           const data = await response.json();
+      
+          // **Logear la respuesta de la API**
+          console.log('Respuesta de la API /api/corte:', data);
+      
           setCorteResults(data.data);
           toast.success('Corte realizado exitosamente');
       
-          // Verificar los datos
-          console.log('Datos de Corte:', {
+          // **Logear los datos que se van a imprimir**
+          console.log('Datos de Corte para imprimir:', {
+            corteResults: data.data,
             cashAmountCorte,
             cardAmountCorte,
-            corteResults: data.data,
           });
       
-          // Llamar a la función de impresión con los datos correctos
+          // Imprimir el ticket de corte
           if (isDesktop) {
-            await printCorteTicket(
-              data.data as CorteResults,
-              parseFloat(cashAmountCorte),
-              parseFloat(cardAmountCorte)
-            );
+            await printCorteTicket(data.data as CorteResults, cashAmount, cardAmount);
           }
-        } catch (error) {
-          console.error('Error:', error);
+        } catch (error: any) {
+          console.error('Error en confirmCorte:', error);
           toast.error('Error al realizar el corte');
         } finally {
           setIsCorteLoading(false);
@@ -607,6 +717,7 @@ const MobileSalesPage: React.FC = () => {
           closeCorteModal();
         }
       };
+      
       
 
   const closeCorteModal = () => {
@@ -680,12 +791,6 @@ const MobileSalesPage: React.FC = () => {
     if (product) {
       setSelectedCartProduct(product);
     }
-  };
-
-  const clearProductInfo = () => {
-    setProductInfoBottom(null);
-    setSearchTermBottom('');
-    setProductSearchedFromBottom(false);
   };
 
   const calculateStockDisplay = (stockLocations: IStockLocation[], piecesPerBox: number) => {

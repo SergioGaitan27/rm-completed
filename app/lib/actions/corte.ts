@@ -1,3 +1,5 @@
+// app/lib/actions/corte.ts
+
 import { connectDB } from '@/app/lib/db/mongodb';
 import Ticket from '@/app/lib/models/Ticket';
 import MobileTicket from '@/app/lib/models/MobileTicket';
@@ -8,7 +10,7 @@ import moment from 'moment-timezone';
 interface CorteData {
   actualCash: number;
   actualCard: number;
-  location: string; // Asegurarse de que location está incluido
+  location: string;
 }
 
 const TIMEZONE = 'America/Mexico_City';
@@ -18,12 +20,12 @@ export async function processCorte(corteData: CorteData) {
 
   const { location, actualCash, actualCard } = corteData;
 
-  // Validate the entered amounts
+  // Validar los montos ingresados
   if (isNaN(actualCash) || isNaN(actualCard)) {
     throw new Error('Montos de efectivo o tarjeta inválidos');
   }
 
-  // Get tickets for the day and location
+  // Obtener tickets del día y ubicación
   const startOfDay = moment().tz(TIMEZONE).startOf('day').toDate();
   const endOfDay = moment().tz(TIMEZONE).endOf('day').toDate();
 
@@ -38,11 +40,11 @@ export async function processCorte(corteData: CorteData) {
   });
 
   const cashMovements = await CashMovement.find({
-    location: location, // Filtrar por location
+    location: location,
     date: { $gte: startOfDay, $lte: endOfDay },
   });
 
-  // Calculate expected amounts
+  // Calcular montos esperados
   const expectedCashTickets = tickets
     .filter((ticket) => ticket.paymentType === 'cash')
     .reduce((sum, ticket) => sum + ticket.totalAmount, 0);
@@ -67,7 +69,7 @@ export async function processCorte(corteData: CorteData) {
   const expectedCash = expectedCashTickets + expectedCashMobileTickets + expectedCashMovements;
   const expectedCard = expectedCardTickets + expectedCardMobileTickets;
 
-  // Create the corte
+  // Crear el corte
   const corte: ICorte = new Corte({
     location: location,
     date: moment().tz(TIMEZONE).toDate(),
@@ -81,11 +83,12 @@ export async function processCorte(corteData: CorteData) {
   await corte.save();
 
   return {
-    location, // Incluir location
+    location,
     expectedCash,
     expectedCard,
     actualCash,
     actualCard,
     totalTickets: tickets.length + mobileTickets.length,
+    cashMovements, // Incluir los movimientos de efectivo
   };
 }
