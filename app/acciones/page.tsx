@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import MobileProductCard from '@/app/components/MobileProductCard'; 
 import ProductCard from '@/app/components/ProductCard'; 
 import { toast } from 'react-hot-toast';
-import { Product, CartItem, IBusinessInfo, IStockLocation } from '@/app/types/product';
+import { Product, CartItem, IBusinessInfo } from '@/app/types/product';
 import PriceAdjustmentModal from '@/app/components/PriceAdjustmentModal';
 import ProductInfo from '@/app/components/ProductInfo';
 import ConectorPluginV3 from '@/app/utils/ConectorPluginV3';
@@ -22,7 +22,6 @@ const CorteModal = lazy(() => import('@/app/components/CorteModal'));
 const CorteConfirmationModal = lazy(() => import('@/app/components/CorteConfirmationModal'));
 const CashOutModal = lazy(() => import('@/app/components/CashOutModal'));
 const CashInModal = lazy(() => import('@/app/components/CashInModal'));
-
 
 interface AdjustedCartItem extends CartItem {
     adjustedPrice?: number;
@@ -45,7 +44,6 @@ interface CorteResults {
   totalTickets: number;
   cashMovements: CashMovement[]; // Nueva propiedad
 }
-
 
 const groupCartItems = (cart: CartItem[]): Record<string, CartItem[]> => {
   return cart.reduce((acc, item) => {
@@ -97,7 +95,6 @@ const useDeviceType = () => {
   
     return isDesktop;
   };
-
 
 const MobileSalesPage: React.FC = () => {
   const isDesktop = useDeviceType();
@@ -152,6 +149,7 @@ const MobileSalesPage: React.FC = () => {
   const [selectedCartProduct, setSelectedCartProduct] = useState<Product | null>(null);
   const [isCashOutModalOpen, setIsCashOutModalOpen] = useState(false);
   const [isCashInModalOpen, setIsCashInModalOpen] = useState(false);
+
 
   useEffect(() => {
     if (searchInputBottomRef.current) {
@@ -248,207 +246,175 @@ const MobileSalesPage: React.FC = () => {
     }
   };
 
-// Ejemplo: printCorteTicket.ts
-
-const printCorteTicket = async (
-  corteResults: CorteResults,
-  cashAmount: number,
-  cardAmount: number
-) => {
-  console.log('printCorteTicket llamado con:', {
-    corteResults,
-    cashAmount,
-    cardAmount,
-  });
-
-  if (!corteResults) {
-    toast.error('No hay resultados de corte para imprimir');
-    console.error('corteResults es null o undefined');
-    return;
-  }
-
-  try {
-    const conector = new ConectorPluginV3(undefined, 'YmEwNzRiYWFfXzIwMjQtMTAtMDhfXzIwMjUtMDEtMDYjIyNaVVQ5amo0ckQ1bi9DL2I2Zk1Mb002N2F4TFd4UXJBMndFWkQ1TEtoNGhhN1B1NVFjc2FVY2Uvb1l4Vjdudk43NThzWk5kdUFoU3BJWnA4SkZLejJ2aHRlOGwzcnlZV00zVXpRajNiS2xWc1VPeFhMUDQrZmFHd1JrWDRLZERLaDFtekdBZWZWa2d6Wmg5ZEV3c1NxVHkxZkMwVW5rMnU5OVdGQ0laaDI4eGpYaU1qRzVCMGVPN1lNVG5YZUtLU1A4L2swMFplOGxaMUtGQ2hraHNyZmtJcWhKYnZJTHU3MWRzR2JsWDllTVIweVpVdEkzeXVwTC93Y2ZQRjVDVmZma1d6UUEwVlhENGRFbTlTOXgwU09QaXdpcDdDUWs1Y0lTbk9zMkFjT1V4Z3NBYUNKUkNFcXZZN3ZOZy9IbkRnays1WW5Zemo5WnZ1QmQwUjdTSWs2SjMwMENoZzZESnovZVZxSEttZVFaZWV6KzR2ZFd6WDJiWlhFdm51Z1ZiTmRZOWJmcnpkNHBVTDBRalBEbXNIQmhKS0JqU3l1TDhPd2RtemdKOGhYcUJIUnpqQzdsMUN6R1MyeTRCRGR3WmwrYm5CMGpjeVUxUGFxaFBXNmhEOFQzTnNEQkVqTTREdTlJMk9HVlFSRDVUdHdZS2VsaXBPY2hidVNaa1ZIdkFtQVF2UURrZHBqQkVWb0Y3MjJkenQ3a25YeGdrSTBDWG8rZEpqNFlMMWE4UmtmQSs1NzNDZE9NQnFnN0YxUEtod2xOa2V4WllqbTFZN0ZlZjV1eFZwUjJsK1dzRUtySXNDcWxsalJZVFZQRURFMWtFQktsVkpTSldUVVVYMGxhNXM0ODV5ZjFwelRBZEZlMi9kSURCZGh4aUc1dUhTQkhhOTdhcUFFcFRBS1RFYz0=');
-
-    await conector.Iniciar();
-    let anchoCaracteres = 48; // Por defecto para 80mm
-
-    switch (printerConfig.paperSize) {
-      case '58mm':
-        anchoCaracteres = 32;
-        break;
-      case '80mm':
-        anchoCaracteres = 48;
-        break;
-      case 'A4':
-        anchoCaracteres = 64;
-        break;
-      default:
-        anchoCaracteres = 48;
-    }
-
-    console.log('Ancho de caracteres para impresión:', anchoCaracteres);
-
-    // Título del Ticket
-    conector.EstablecerEnfatizado(true);
-    conector.EstablecerTamañoFuente(2, 2);
-    conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
-    conector.EscribirTexto("TICKET DE CORTE\n\n");
-    console.log('Escribiendo "TICKET DE CORTE"');
-
-    // Información Básica
-    conector.EstablecerTamañoFuente(1, 1);
-    conector.EscribirTexto(`Ubicación: ${corteResults.location}\n`);
-    console.log(`Escribiendo Ubicación: ${corteResults.location}`);
-
-    conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
-    console.log(`Escribiendo Fecha: ${new Date().toLocaleString()}`);
-
-    conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-    console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
-
-    // Montos Ingresados
-    conector.EscribirTexto("Montos ingresados:\n");
-    console.log('Escribiendo "Montos ingresados:"');
-
-    conector.EscribirTexto(`Efectivo: $${cashAmount.toFixed(2)}\n`);
-    console.log(`Escribiendo Efectivo ingresado: $${cashAmount.toFixed(2)}`);
-
-    conector.EscribirTexto(`Tarjeta: $${cardAmount.toFixed(2)}\n`);
-    console.log(`Escribiendo Tarjeta ingresada: $${cardAmount.toFixed(2)}`);
-
-    conector.EscribirTexto(`Total ingresado: $${(cashAmount + cardAmount).toFixed(2)}\n`);
-    console.log(`Escribiendo Total ingresado: $${(cashAmount + cardAmount).toFixed(2)}`);
-
-    conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-    console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
-
-    // Resultados Esperados
-    const cashInMovements = corteResults.cashMovements.filter(mov => mov.type === 'in');
-    const totalCashIn = cashInMovements.reduce((sum, mov) => sum + mov.amount, 0);
-    const cashOutMovements = corteResults.cashMovements.filter(mov => mov.type === 'out');
-    const totalCashOut = cashOutMovements.reduce((sum, mov) => sum + mov.amount, 0);
-    const totalSalesCash = corteResults.expectedCash - totalCashIn ;
-    const totalCash = totalSalesCash + totalCashIn;
-    
-    conector.EscribirTexto("Resultados esperados:\n");
-    console.log('Escribiendo "Resultados esperados:"');
-
-    conector.EscribirTexto(`Efectivo Total: $${totalCash.toFixed(2)}\n`);
-    console.log(`Escribiendo Efectivo Total: $${totalCash.toFixed(2)}`);
-    conector.EscribirTexto("Entradas de Efectivo:\n");
-    console.log('Escribiendo "Entradas de Efectivo:"');
-
-    cashInMovements.forEach(mov => {
-      conector.EscribirTexto(`${mov.concept}: $${mov.amount.toFixed(2)}\n`);
-      console.log(`Escribiendo Entrada: ${mov.concept}: $${mov.amount.toFixed(2)}`);
+  const printCorteTicket = async (
+    corteResults: CorteResults,
+    cashAmount: number,
+    cardAmount: number
+  ) => {
+    console.log('printCorteTicket llamado con:', {
+      corteResults,
+      cashAmount,
+      cardAmount,
     });
-
-    conector.EscribirTexto(`Total Entradas: $${totalCashIn.toFixed(2)}\n`);
-    console.log(`Escribiendo Total Entradas: $${totalCashIn.toFixed(2)}`);
-
-    conector.EscribirTexto("Salidas de Efectivo:\n");
-    console.log('Escribiendo "Salidas de Efectivo:"');
-
-    cashOutMovements.forEach(mov => {
-      conector.EscribirTexto(`${mov.concept}: $${mov.amount.toFixed(2)}\n`);
-      console.log(`Escribiendo Salida: ${mov.concept}: $${mov.amount.toFixed(2)}`);
-    });
-
-    conector.EscribirTexto(`Total Salidas: $${totalCashOut.toFixed(2)}\n`);
-    console.log(`Escribiendo Total Salidas: $${totalCashOut.toFixed(2)}`);
-
-    conector.EscribirTexto(`Total de venta: $${totalSalesCash.toFixed(2)}\n`);
-    console.log(`Escribiendo Total de venta: $${totalSalesCash.toFixed(2)}`);
-
-    conector.EscribirTexto(`Total tarjeta: $${corteResults.expectedCard.toFixed(2)}\n`);
-    console.log(`Escribiendo Total tarjeta: $${corteResults.expectedCard.toFixed(2)}`);
-
-    conector.EscribirTexto(`Total esperado: $${(corteResults.expectedCash + corteResults.expectedCard).toFixed(2)}\n`);
-    console.log(`Escribiendo Total esperado: $${(corteResults.expectedCash + corteResults.expectedCard).toFixed(2)}`);
-
-    conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-    console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
-
-    // Diferencias
-    const cashDifference = cashAmount - corteResults.expectedCash;
-    const cardDifference = cardAmount - corteResults.expectedCard;
-    const totalDifference = cashDifference + cardDifference;
-
-    conector.EscribirTexto("Diferencias:\n");
-    console.log('Escribiendo "Diferencias:"');
-
-    conector.EscribirTexto(`Efectivo: $${cashDifference.toFixed(2)} (${cashDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
-    console.log(`Escribiendo Diferencia Efectivo: $${cashDifference.toFixed(2)} (${cashDifference >= 0 ? 'Sobra' : 'Falta'})`);
-
-    conector.EscribirTexto(`Tarjeta: $${cardDifference.toFixed(2)} (${cardDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
-    console.log(`Escribiendo Diferencia Tarjeta: $${cardDifference.toFixed(2)} (${cardDifference >= 0 ? 'Sobra' : 'Falta'})`);
-
-    conector.EscribirTexto(`Total: $${totalDifference.toFixed(2)} (${totalDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
-    console.log(`Escribiendo Diferencia Total: $${totalDifference.toFixed(2)} (${totalDifference >= 0 ? 'Sobra' : 'Falta'})`);
-
-    conector.EscribirTexto("\n");
-    console.log('Escribiendo línea en blanco');
-
-
-    conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-    console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
-
-    // Solicitar Corte de Papel
-    conector.Corte(1);
-    console.log('Solicitando corte de papel');
-
-    // Ejecutar la impresión
-    const resultado = await conector.imprimirEn(printerConfig.printerName);
-    console.log('Resultado de la impresión:', resultado);
-
-    // Manejo de Errores de Impresión
-    if (typeof resultado === 'object' && resultado !== null && 'error' in resultado) {
-      throw new Error(resultado.error);
-    } else if (resultado !== true) {
-      throw new Error('La impresión no se completó correctamente');
+  
+    if (!corteResults) {
+      toast.error('No hay resultados de corte para imprimir');
+      console.error('corteResults es null o undefined');
+      return;
     }
-
-    toast.success('Ticket de corte impreso correctamente');
-  } catch (error: any) {
-    console.error('Error al imprimir el ticket de corte:', error);
-    if (error instanceof Error) {
-      toast.error(`Error al imprimir el ticket de corte: ${error.message}`);
-    } else {
-      toast.error('Error desconocido al imprimir el ticket de corte');
+  
+    try {
+      const conector = new ConectorPluginV3(undefined, 'YmEwNzRiYWFfXzIwMjQtMTAtMDhfXzIwMjUtMDEtMDYjIyNaVVQ5amo0ckQ1bi9DL2I2Zk1Mb002N2F4TFd4UXJBMndFWkQ1TEtoNGhhN1B1NVFjc2FVY2Uvb1l4Vjdudk43NThzWk5kdUFoU3BJWnA4SkZLejJ2aHRlOGwzcnlZV00zVXpRajNiS2xWc1VPeFhMUDQrZmFHd1JrWDRLZERLaDFtekdBZWZWa2d6Wmg5ZEV3c1NxVHkxZkMwVW5rMnU5OVdGQ0laaDI4eGpYaU1qRzVCMGVPN1lNVG5YZUtLU1A4L2swMFplOGxaMUtGQ2hraHNyZmtJcWhKYnZJTHU3MWRzR2JsWDllTVIweVpVdEkzeXVwTC93Y2ZQRjVDVmZma1d6UUEwVlhENGRFbTlTOXgwU09QaXdpcDdDUWs1Y0lTbk9zMkFjT1V4Z3NBYUNKUkNFcXZZN3ZOZy9IbkRnays1WW5Zemo5WnZ1QmQwUjdTSWs2SjMwMENoZzZESnovZVZxSEttZVFaZWV6KzR2ZFd6WDJiWlhFdm51Z1ZiTmRZOWJmcnpkNHBVTDBRalBEbXNIQmhKS0JqU3l1TDhPd2RtemdKOGhYcUJIUnpqQzdsMUN6R1MyeTRCRGR3WmwrYm5CMGpjeVUxUGFxaFBXNmhEOFQzTnNEQkVqTTREdTlJMk9HVlFSRDVUdHdZS2VsaXBPY2hidVNaa1ZIdkFtQVF2UURrZHBqQkVWb0Y3MjJkenQ3a25YeGdrSTBDWG8rZEpqNFlMMWE4UmtmQSs1NzNDZE9NQnFnN0YxUEtod2xOa2V4WllqbTFZN0ZlZjV1eFZwUjJsK1dzRUtySXNDcWxsalJZVFZQRURFMWtFQktsVkpTSldUVVVYMGxhNXM0ODV5ZjFwelRBZEZlMi9kSURCZGh4aUc1dUhTQkhhOTdhcUFFcFRBS1RFYz0=');
+  
+      await conector.Iniciar();
+      let anchoCaracteres = 48; // Por defecto para 80mm
+  
+      switch (printerConfig.paperSize) {
+        case '58mm':
+          anchoCaracteres = 32;
+          break;
+        case '80mm':
+          anchoCaracteres = 48;
+          break;
+        case 'A4':
+          anchoCaracteres = 64;
+          break;
+        default:
+          anchoCaracteres = 48;
+      }
+  
+      console.log('Ancho de caracteres para impresión:', anchoCaracteres);
+  
+      // Título del Ticket
+      conector.EstablecerEnfatizado(true);
+      conector.EstablecerTamañoFuente(2, 2);
+      conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
+      conector.EscribirTexto("TICKET DE CORTE\n\n");
+      console.log('Escribiendo "TICKET DE CORTE"');
+  
+      // Información Básica
+      conector.EstablecerTamañoFuente(1, 1);
+      conector.EscribirTexto(`Ubicación: ${corteResults.location}\n`);
+      console.log(`Escribiendo Ubicación: ${corteResults.location}`);
+  
+      conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
+      console.log(`Escribiendo Fecha: ${new Date().toLocaleString()}`);
+  
+      conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+      console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
+  
+      // Montos Ingresados
+      conector.EscribirTexto("Montos ingresados:\n");
+      console.log('Escribiendo "Montos ingresados:"');
+  
+      conector.EscribirTexto(`Efectivo: $${cashAmount.toFixed(2)}\n`);
+      console.log(`Escribiendo Efectivo ingresado: $${cashAmount.toFixed(2)}`);
+  
+      conector.EscribirTexto(`Tarjeta: $${cardAmount.toFixed(2)}\n`);
+      console.log(`Escribiendo Tarjeta ingresada: $${cardAmount.toFixed(2)}`);
+  
+      conector.EscribirTexto(`Total ingresado: $${(cashAmount + cardAmount).toFixed(2)}\n`);
+      console.log(`Escribiendo Total ingresado: $${(cashAmount + cardAmount).toFixed(2)}`);
+  
+      conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+      console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
+  
+      // Resultados Esperados
+      const cashInMovements = corteResults.cashMovements.filter(mov => mov.type === 'in');
+      const totalCashIn = cashInMovements.reduce((sum, mov) => sum + mov.amount, 0);
+      const cashOutMovements = corteResults.cashMovements.filter(mov => mov.type === 'out');
+      const totalCashOut = cashOutMovements.reduce((sum, mov) => sum + mov.amount, 0);
+      const totalSalesCash = corteResults.expectedCash - totalCashIn ;
+      const totalCash = totalSalesCash + totalCashIn;
+      
+      conector.EscribirTexto("Resultados esperados:\n");
+      console.log('Escribiendo "Resultados esperados:"');
+  
+      conector.EscribirTexto(`Efectivo Total: $${totalCash.toFixed(2)}\n`);
+      console.log(`Escribiendo Efectivo Total: $${totalCash.toFixed(2)}`);
+      conector.EscribirTexto("Entradas de Efectivo:\n");
+      console.log('Escribiendo "Entradas de Efectivo:"');
+  
+      cashInMovements.forEach(mov => {
+        conector.EscribirTexto(`${mov.concept}: $${mov.amount.toFixed(2)}\n`);
+        console.log(`Escribiendo Entrada: ${mov.concept}: $${mov.amount.toFixed(2)}`);
+      });
+  
+      conector.EscribirTexto(`Total Entradas: $${totalCashIn.toFixed(2)}\n`);
+      console.log(`Escribiendo Total Entradas: $${totalCashIn.toFixed(2)}`);
+  
+      conector.EscribirTexto("Salidas de Efectivo:\n");
+      console.log('Escribiendo "Salidas de Efectivo:"');
+  
+      cashOutMovements.forEach(mov => {
+        conector.EscribirTexto(`${mov.concept}: $${mov.amount.toFixed(2)}\n`);
+        console.log(`Escribiendo Salida: ${mov.concept}: $${mov.amount.toFixed(2)}`);
+      });
+  
+      conector.EscribirTexto(`Total Salidas: $${totalCashOut.toFixed(2)}\n`);
+      console.log(`Escribiendo Total Salidas: $${totalCashOut.toFixed(2)}`);
+  
+      conector.EscribirTexto(`Total de venta: $${totalSalesCash.toFixed(2)}\n`);
+      console.log(`Escribiendo Total de venta: $${totalSalesCash.toFixed(2)}`);
+  
+      conector.EscribirTexto(`Total tarjeta: $${corteResults.expectedCard.toFixed(2)}\n`);
+      console.log(`Escribiendo Total tarjeta: $${corteResults.expectedCard.toFixed(2)}`);
+  
+      conector.EscribirTexto(`Total esperado: $${(corteResults.expectedCash + corteResults.expectedCard).toFixed(2)}\n`);
+      console.log(`Escribiendo Total esperado: $${(corteResults.expectedCash + corteResults.expectedCard).toFixed(2)}`);
+  
+      conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+      console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
+  
+      // Diferencias
+      const cashDifference = cashAmount - corteResults.expectedCash;
+      const cardDifference = cardAmount - corteResults.expectedCard;
+      const totalDifference = cashDifference + cardDifference;
+  
+      conector.EscribirTexto("Diferencias:\n");
+      console.log('Escribiendo "Diferencias:"');
+  
+      conector.EscribirTexto(`Efectivo: $${cashDifference.toFixed(2)} (${cashDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
+      console.log(`Escribiendo Diferencia Efectivo: $${cashDifference.toFixed(2)} (${cashDifference >= 0 ? 'Sobra' : 'Falta'})`);
+  
+      conector.EscribirTexto(`Tarjeta: $${cardDifference.toFixed(2)} (${cardDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
+      console.log(`Escribiendo Diferencia Tarjeta: $${cardDifference.toFixed(2)} (${cardDifference >= 0 ? 'Sobra' : 'Falta'})`);
+  
+      conector.EscribirTexto(`Total: $${totalDifference.toFixed(2)} (${totalDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
+      console.log(`Escribiendo Diferencia Total: $${totalDifference.toFixed(2)} (${totalDifference >= 0 ? 'Sobra' : 'Falta'})`);
+  
+      conector.EscribirTexto("\n");
+      console.log('Escribiendo línea en blanco');
+  
+  
+      conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+      console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
+  
+      // Solicitar Corte de Papel
+      conector.Corte(1);
+      console.log('Solicitando corte de papel');
+  
+      // Ejecutar la impresión
+      const resultado = await conector.imprimirEn(printerConfig.printerName);
+      console.log('Resultado de la impresión:', resultado);
+  
+      // Manejo de Errores de Impresión
+      if (typeof resultado === 'object' && resultado !== null && 'error' in resultado) {
+        throw new Error(resultado.error);
+      } else if (resultado !== true) {
+        throw new Error('La impresión no se completó correctamente');
+      }
+  
+      toast.success('Ticket de corte impreso correctamente');
+    } catch (error: any) {
+      console.error('Error al imprimir el ticket de corte:', error);
+      if (error instanceof Error) {
+        toast.error(`Error al imprimir el ticket de corte: ${error.message}`);
+      } else {
+        toast.error('Error desconocido al imprimir el ticket de corte');
+      }
     }
-  }
-};
-
-  useEffect(() => {
-    // Generar un ID de dispositivo único si no existe
-    const storedDeviceId = localStorage.getItem('deviceId');
-    if (storedDeviceId) {
-      setDeviceId(storedDeviceId);
-    } else {
-      const newDeviceId = `mobile-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      setDeviceId(newDeviceId);
-      localStorage.setItem('deviceId', newDeviceId);
-    }
-
-    // Obtener coordenadas GPS
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setGpsCoordinates({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          });
-        },
-        (error) => {
-          console.error("Error obteniendo la ubicación:", error);
-          toast.error("No se pudo obtener la ubicación GPS");
-        }
-      );
-    } else {
-      toast.error("Geolocalización no soportada en este dispositivo");
-    }
-  }, []);
+  };
 
   const fetchBusinessInfo = useCallback(async () => {
     if (!session || !session.user?.location) return;
@@ -579,7 +545,6 @@ const printCorteTicket = async (
     setCardAmountCorte('');
     setCorteResults(null);
   };
-
 
   const handleSearchTop = () => {
     const searchTerm = searchTermTop.trim().toUpperCase();
@@ -718,7 +683,6 @@ const printCorteTicket = async (
         }
       };
       
-      
 
   const closeCorteModal = () => {
     setIsCorteModalOpen(false);
@@ -793,24 +757,12 @@ const printCorteTicket = async (
     }
   };
 
-  const calculateStockDisplay = (stockLocations: IStockLocation[], piecesPerBox: number) => {
-    return stockLocations.map(location => {
-      const quantity = Number(location.quantity);
-      const boxes = Math.floor(quantity / piecesPerBox);
-      const loosePieces = quantity % piecesPerBox;
-      return {
-        location: location.location,
-        boxes,
-        loosePieces,
-        total: quantity
-      };
-    });
-  };
+  // **Eliminar todas las funciones relacionadas con stock**
+  // Por ejemplo, eliminar calculateStockDisplay, getTotalStockAcrossLocations, getRemainingQuantity, isProductAvailable
 
   const handleSearchTopChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTermTop(e.target.value.toUpperCase());
   };
-
 
   const calculatePrice = (product: Product, totalQuantity: number): number => {
     if (totalQuantity >= product.price3MinQty) return product.price3;
@@ -891,90 +843,18 @@ const printCorteTicket = async (
     }
   };
 
-  const getTotalStockAcrossLocations = useCallback((product: Product): number => {
-    if (!product.stockLocations) {
-      console.warn(`El producto ${product.name} no tiene información de stock`);
-      return 0;
-    }
-  
-    // Obtener la ubicación actual del usuario
-    const userLocation = session?.user?.location || '';
-  
-    // Filtrar ubicaciones: la ubicación actual y las que comienzan con 'B'
-    const filteredLocations = product.stockLocations.filter(location => {
-      return (
-        location.location === userLocation ||
-        location.location.toUpperCase().startsWith('B')
-      );
-    });
-  
-    // Sumar las cantidades de las ubicaciones filtradas
-    return filteredLocations.reduce((total, location) => {
-      const quantity = Number(location.quantity);
-      return total + (isNaN(quantity) ? 0 : quantity);
-    }, 0);
-  }, [session]);
-  
-
-  const getRemainingQuantity = useCallback((product: Product): number => {
-    if (!session || !session.user?.location) {
-      console.warn('No se pudo obtener la ubicación del usuario para verificar el stock');
-      return 0;
-    }
-  
-    if (!product.stockLocations) {
-      console.warn(`El producto ${product.name} no tiene información de stock`);
-      return 0;
-    }
-  
-    // Obtener la ubicación actual del usuario
-    const userLocation = session.user.location;
-  
-    // Filtrar ubicaciones: la ubicación actual y las que comienzan con 'B'
-    const relevantLocations = product.stockLocations.filter(location => {
-      return (
-        location.location === userLocation ||
-        location.location.toUpperCase().startsWith('B')
-      );
-    });
-  
-    // Sumar las cantidades de las ubicaciones filtradas
-    const totalRelevantStock = relevantLocations.reduce((total, location) => {
-      const quantity = Number(location.quantity);
-      return total + (isNaN(quantity) ? 0 : quantity);
-    }, 0);
-  
-    // Restar la cantidad en el carrito
-    const cartQuantity = getCartQuantity(product._id);
-    const remainingQuantity = totalRelevantStock - cartQuantity;
-  
-    return remainingQuantity;
-  }, [session, getCartQuantity]);
-  
-
   const handleAddToCart = () => {
     if (selectedProduct) {
-      const totalStockAcrossLocations = getTotalStockAcrossLocations(selectedProduct);
       const quantityToAdd = unitType === 'boxes' ? quantity * selectedProduct.piecesPerBox : quantity;
       const currentCartQuantity = getCartQuantity(selectedProduct._id);
-      const totalQuantityAfterAdding = currentCartQuantity + quantityToAdd;
-  
-      if (totalQuantityAfterAdding > totalStockAcrossLocations) {
-        toast.error(`La cantidad excede el inventario total. Cantidad disponible: ${totalStockAcrossLocations - currentCartQuantity} piezas.`);
-        return;
-      }
-  
-      const updatedCart = [...cart];
-      const existingItems = updatedCart.filter(item => item._id === selectedProduct._id);
-      const totalQuantityInCart = existingItems.reduce((total, item) => 
-        total + (item.unitType === 'boxes' ? item.quantity * item.piecesPerBox : item.quantity), 0);
-      const newTotalQuantity = totalQuantityInCart + quantityToAdd;
+      const newTotalQuantity = currentCartQuantity + quantityToAdd;
       const newAppliedPrice = calculatePrice(selectedProduct, newTotalQuantity);
-  
+
+      const updatedCart = [...cart];
       const existingItemIndex = updatedCart.findIndex(
         item => item._id === selectedProduct._id && item.unitType === unitType
       );
-  
+
       if (existingItemIndex !== -1) {
         updatedCart[existingItemIndex] = {
           ...updatedCart[existingItemIndex],
@@ -994,18 +874,18 @@ const printCorteTicket = async (
           item.appliedPrice = newAppliedPrice;
         }
       });
-  
+
       setCart(updatedCart);
       localStorage.setItem('cart', JSON.stringify(updatedCart));
       setSelectedProduct(null);
       setQuantity(1);
       setUnitType('pieces');
       toast.success('Producto añadido al carrito');
-  
+
       // Actualizar ProductInfo después de agregar al carrito
       setProductInfoBottom(selectedProduct);
       setProductSearchedFromBottom(true);
-  
+
       if (searchInputRef.current) {
         searchInputRef.current.focus();
       }
@@ -1013,21 +893,7 @@ const printCorteTicket = async (
   };
 
   const handleQuantityChange = (newQuantity: number) => {
-    if (selectedProduct) {
-      const totalStockAcrossLocations = getTotalStockAcrossLocations(selectedProduct);
-      const maxQuantity = unitType === 'boxes' 
-        ? Math.floor(totalStockAcrossLocations / selectedProduct.piecesPerBox)
-        : totalStockAcrossLocations;
-  
-      if (newQuantity > maxQuantity) {
-        toast.error(`La cantidad máxima disponible es ${maxQuantity} ${unitType === 'boxes' ? 'cajas' : 'piezas'}.`);
-        setQuantity(maxQuantity);
-      } else {
-        setQuantity(newQuantity);
-      }
-    } else {
-      setQuantity(newQuantity);
-    }
+    setQuantity(newQuantity);
   };
 
   const removeFromCart = (productId: string) => {
@@ -1047,10 +913,6 @@ const printCorteTicket = async (
     if (e.key === 'Enter') {
       handleSearchTop();
     }
-  };
-
-  const isProductAvailable = (product: Product): boolean => {
-    return product.availability && getRemainingQuantity(product) > 0;
   };
 
   const handleCustomerNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1288,7 +1150,7 @@ const printCorteTicket = async (
           
           
           {selectedProduct && (
-            <div className={`border-2 ${isProductAvailable(selectedProduct) ? 'border-green-500' : 'border-red-500'} rounded-lg p-4`}>
+            <div className={`border-2 rounded-lg p-4`}>
               {isDesktop ? (
                 <ProductCard
                   product={selectedProduct}
@@ -1300,12 +1162,6 @@ const printCorteTicket = async (
                     setQuantity(0);
                   }}
                   onAddToCart={handleAddToCart}
-                  remainingQuantity={getRemainingQuantity(selectedProduct)}
-                  totalStockAcrossLocations={getTotalStockAcrossLocations(selectedProduct)}
-                  maxQuantity={unitType === 'boxes' 
-                    ? Math.floor(getTotalStockAcrossLocations(selectedProduct) / selectedProduct.piecesPerBox)
-                    : getTotalStockAcrossLocations(selectedProduct)}
-                  getCartQuantity={getCartQuantity} 
                 />
               ) : (
                 <MobileProductCard
@@ -1321,12 +1177,6 @@ const printCorteTicket = async (
                     setQuantity(0);
                   }}
                   onAddToCart={handleAddToCart}
-                  remainingQuantity={getRemainingQuantity(selectedProduct)}
-                  totalStockAcrossLocations={getTotalStockAcrossLocations(selectedProduct)}
-                  maxQuantity={unitType === 'boxes' 
-                    ? Math.floor(getTotalStockAcrossLocations(selectedProduct) / selectedProduct.piecesPerBox)
-                    : getTotalStockAcrossLocations(selectedProduct)}
-                  getCartQuantity={getCartQuantity} 
                 />
               )}
             </div>
@@ -1347,13 +1197,8 @@ const printCorteTicket = async (
                 filteredProducts={filteredProducts}
                 handleSelectProduct={handleSelectProduct}
                 productInfoBottom={productInfoBottom}
-                getRemainingQuantity={getRemainingQuantity}
-                isProductAvailable={isProductAvailable}
                 handleAddFromDetails={handleAddFromDetails}
-                productSearchedFromBottom={productSearchedFromBottom}
-                calculateStockDisplay={calculateStockDisplay}
-                getCartQuantity={getCartQuantity}
-                getTotalStockAcrossLocations={getTotalStockAcrossLocations}
+                productSearchedFromBottom={productSearchedFromBottom} // Propiedad añadida
               />
               </CardContent>
             </Card>

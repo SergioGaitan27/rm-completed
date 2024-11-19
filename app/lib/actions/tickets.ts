@@ -2,10 +2,9 @@
 
 import mongoose from 'mongoose';
 import Sequence from '@/app/lib/models/Sequence';
-import StockMovement, { IStockMovement, MovementType } from '@/app/lib/models/StockMovement';
 import { connectDB } from '@/app/lib/db/mongodb';
 import Ticket, { ITicket } from '@/app/lib/models/Ticket';
-import Product, { IProduct, IStockLocation } from '@/app/lib/models/Producto';
+import Product from '@/app/lib/models/Producto';
 import moment from 'moment-timezone';
 import { pusherServer } from '@/app/utils/pusher';
 
@@ -48,7 +47,7 @@ async function getNextSequenceNumber(location: string, session: mongoose.ClientS
   return updatedSequence.sequenceValue;
 }
 
-// Función principal para procesar un ticket
+// Función principal para procesar un ticket sin considerar stock
 export async function processTicket(ticketData: TicketData) {
   await connectDB();
 
@@ -124,93 +123,11 @@ export async function processTicket(ticketData: TicketData) {
           console.warn('Pusher no está inicializado. No se pudo enviar el evento.');
         }
 
-        // Actualizar stock de productos
-        const updatedProductIds = await Promise.all(updatedItems.map(async (item) => {
-          const product = await Product.findById(item.productId).session(session);
-          if (product) {
-            const totalPieces = item.unitType === 'boxes' ? item.quantity * product.piecesPerBox : item.quantity;
-
-            // Definir el orden de las ubicaciones para deducir stock
-            const userLocationDerived = `B${location.substring(1)}`; // B + ubicación del usuario sin la primera letra
-            const secondaryLocations = ['B161-A', 'B161-B', 'B5']; // Ubicaciones adicionales en orden
-            const orderedLocations = [location, userLocationDerived, ...secondaryLocations]; // 1. Ubicación actual, 2. B + derivada, etc.
-
-            let remainingToDeduct = totalPieces;
-
-            console.log(`\nProcesando deducción de stock para el producto: ${product.name}`);
-            console.log(`Cantidad a deducir (en piezas): ${totalPieces}`);
-            console.log(`Orden de ubicaciones a verificar: ${orderedLocations.join(', ')}`);
-
-            for (const loc of orderedLocations) {
-              if (remainingToDeduct <= 0) break;
-
-              const stockLocation = product.stockLocations.find((locationObj: IStockLocation) => locationObj.location === loc);
-
-              if (stockLocation) {
-                console.log(`Ubicación: ${loc}, Stock disponible: ${stockLocation.quantity}`);
-
-                if (stockLocation.quantity > 0) {
-                  const available = stockLocation.quantity;
-
-                  if (available >= remainingToDeduct) {
-                    stockLocation.quantity -= remainingToDeduct;
-                    console.log(`Deducted ${remainingToDeduct} piezas de ${loc}. Nuevo stock: ${stockLocation.quantity}`);
-
-                    // Registrar movimiento de stock
-                    const movement: IStockMovement = new StockMovement({
-                      productId: product._id,
-                      quantityChange: -remainingToDeduct,
-                      location: loc,
-                      movementType: 'sale',
-                      ticketId: ticketId,
-                      date: new Date(),
-                    });
-
-                    await movement.save({ session });
-
-                    remainingToDeduct = 0;
-                  } else {
-                    stockLocation.quantity = 0;
-                    console.log(`Deducted ${available} piezas de ${loc}. Nuevo stock: ${stockLocation.quantity}`);
-
-                    // Registrar movimiento de stock
-                    const movement: IStockMovement = new StockMovement({
-                      productId: product._id,
-                      quantityChange: -available,
-                      location: loc,
-                      movementType: 'sale',
-                      ticketId: ticketId,
-                      date: new Date(),
-                    });
-
-                    await movement.save({ session });
-
-                    remainingToDeduct -= available;
-                  }
-                } else {
-                  console.log(`No hay stock disponible en ${loc}.`);
-                }
-              } else {
-                console.log(`La ubicación ${loc} no existe para este producto.`);
-              }
-            }
-
-            if (remainingToDeduct > 0) {
-              console.error(`Stock insuficiente para el producto ${product.name}. Cantidad faltante: ${remainingToDeduct} piezas.`);
-              throw new Error(`Stock insuficiente para el producto ${product.name}. Cantidad faltante: ${remainingToDeduct} piezas.`);
-            }
-
-            await product.save({ session });
-            console.log(`Stock actualizado para el producto ${product.name}.\n`);
-            return product._id.toString();
-          }
-          return null;
-        }));
-
-        const updatedProducts = await Product.find({ _id: { $in: updatedProductIds.filter(Boolean) } }).session(session);
+        // **Eliminar la actualización de stock y movimientos de stock**
+        // Toda la lógica relacionada con stock se ha eliminado
 
         console.log('Transacción completada exitosamente (Intento', attempt, ')');
-        return { newTicket, updatedProducts };
+        return { newTicket };
       }, {
         readPreference: 'primary',
         readConcern: { level: 'local' },

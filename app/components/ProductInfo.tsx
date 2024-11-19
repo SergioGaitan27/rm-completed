@@ -5,7 +5,7 @@ import React, { useImperativeHandle, useRef, forwardRef } from 'react';
 import Image from 'next/image';
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
-import { Product, IStockLocation } from '@/app/types/product';
+import { Product } from '@/app/types/product';
 
 interface ProductInfoProps {
   searchTermBottom: string;
@@ -15,13 +15,8 @@ interface ProductInfoProps {
   filteredProducts: Product[];
   handleSelectProduct: (product: Product) => void;
   productInfoBottom: Product | null;
-  getRemainingQuantity: (product: Product) => number;
-  isProductAvailable: (product: Product) => boolean;
   handleAddFromDetails: (product: Product) => void;
   productSearchedFromBottom: boolean;
-  calculateStockDisplay: (stockLocations: IStockLocation[], piecesPerBox: number) => any[];
-  getCartQuantity: (productId: string) => number;
-  getTotalStockAcrossLocations: (product: Product) => number;
 }
 
 const ProductInfo = forwardRef<HTMLInputElement, ProductInfoProps>((props, ref) => {
@@ -33,25 +28,14 @@ const ProductInfo = forwardRef<HTMLInputElement, ProductInfoProps>((props, ref) 
     filteredProducts,
     handleSelectProduct,
     productInfoBottom,
-    getRemainingQuantity,
-    isProductAvailable,
     handleAddFromDetails,
-    productSearchedFromBottom,
-    calculateStockDisplay,
-    getCartQuantity,
-    getTotalStockAcrossLocations
+    productSearchedFromBottom
   } = props;
 
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Expose the input's ref to the parent component
   useImperativeHandle(ref, () => inputRef.current!);
-
-  const getAvailableQuantityTotal = (product: Product) => {
-    const totalQuantity = getTotalStockAcrossLocations(product);
-    const cartQuantity = getCartQuantity(product._id);
-    return totalQuantity - cartQuantity;
-  };
 
   return (
     <>
@@ -87,7 +71,7 @@ const ProductInfo = forwardRef<HTMLInputElement, ProductInfoProps>((props, ref) 
       </div>
 
       {productInfoBottom && (
-        <div className={`mt-4 border-2 ${isProductAvailable(productInfoBottom) ? 'border-green-500' : 'border-red-500'} rounded-lg p-4`}>
+        <div className={`mt-4 border-2 ${productInfoBottom.availability ? 'border-green-500' : 'border-red-500'} rounded-lg p-4`}>
           <div className="flex space-x-4">
             <div className="w-1/4">
               {productInfoBottom.imageUrl ? (
@@ -99,7 +83,7 @@ const ProductInfo = forwardRef<HTMLInputElement, ProductInfoProps>((props, ref) 
                   className="object-cover"
                 />
               ) : (
-                <div className="w-[100px] h-[100px] bg-gray-200 flex items-center justify-center">
+                <div className="w-[100px] h-[100px] bg-gray-200 flex items-center justify-center rounded">
                   No imagen
                 </div>
               )}
@@ -116,33 +100,14 @@ const ProductInfo = forwardRef<HTMLInputElement, ProductInfoProps>((props, ref) 
               <p>Precio caja: ${productInfoBottom.price3.toFixed(2)} (Cantidad mínima: {productInfoBottom.price3MinQty})</p>
               {productInfoBottom.price4 && <p>Precio 4: ${productInfoBottom.price4.toFixed(2)}</p>}
               {productInfoBottom.price5 && <p>Precio 5: ${productInfoBottom.price5.toFixed(2)}</p>}
-              
-              {productInfoBottom.ajustado ? (
-                <>
-                  <div className="mt-4 p-2 bg-gray-100 rounded">
-                    <p className={`font-bold text-center ${getAvailableQuantityTotal(productInfoBottom) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      Disponible para venta: {getAvailableQuantityTotal(productInfoBottom)} piezas
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <p></p>
-              )}
             </div>
           </div>
           {productSearchedFromBottom && (
             <Button 
               onClick={() => handleAddFromDetails(productInfoBottom)}
-              className={`text-white px-4 py-2 rounded mt-4 w-full ${
-                getAvailableQuantityTotal(productInfoBottom) > 0
-                  ? 'bg-green-500 hover:bg-green-600' 
-                  : 'bg-red-500 hover:bg-red-600 cursor-not-allowed'
-              }`}
-              disabled={getAvailableQuantityTotal(productInfoBottom) <= 0}
+              className="text-white px-4 py-2 rounded mt-4 w-full bg-green-500 hover:bg-green-600"
             >
-              {getAvailableQuantityTotal(productInfoBottom) > 0
-                ? 'Seleccionar producto' 
-                : 'Sin inventario disponible para venta'}
+              Seleccionar producto
             </Button>
           )}
         </div>

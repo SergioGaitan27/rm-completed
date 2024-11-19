@@ -9,16 +9,8 @@ const TIMEZONE = 'America/Mexico_City';
 export async function POST(req: NextRequest) {
   try {
     const ticketData = await req.json();
-    const { newTicket, updatedProducts } = await processTicket(ticketData);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Ticket procesado exitosamente',
-      data: {
-        ticket: newTicket,
-        updatedProducts
-      }
-    }, { status: 200 });
+    const result = await processTicket(ticketData);
+    return NextResponse.json({ success: true, message: 'Venta procesada exitosamente', data: result }, { status: 201 });
   } catch (error: unknown) {
     console.error("Error detallado:", error);
     if (error instanceof Error) {

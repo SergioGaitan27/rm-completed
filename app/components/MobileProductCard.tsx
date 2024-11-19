@@ -7,11 +7,6 @@ import { Label } from "@/app/components/ui/label";
 import { Dialog, DialogContent, DialogTrigger } from "@/app/components/ui/dialog";
 import { Plus, Minus } from 'lucide-react';
 
-interface StockLocation {
-  location: string;
-  quantity: string | number;
-}
-
 interface Product {
   _id: string;
   name: string;
@@ -26,7 +21,6 @@ interface Product {
   price3MinQty: number;
   imageUrl: string;
   availability: boolean;
-  stockLocations?: StockLocation[];
   category?: string;
 }
 
@@ -37,10 +31,6 @@ interface MobileProductCardProps {
   onQuantityChange: (quantity: number) => void;
   onUnitTypeChange: (unitType: 'pieces' | 'boxes') => void;
   onAddToCart: () => void;
-  remainingQuantity: number;
-  maxQuantity: number;
-  totalStockAcrossLocations: number;
-  getCartQuantity: (productId: string) => number;
 }
 
 const MobileProductCard: React.FC<MobileProductCardProps> = ({
@@ -50,10 +40,6 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
   onQuantityChange,
   onUnitTypeChange,
   onAddToCart,
-  remainingQuantity,
-  maxQuantity,
-  totalStockAcrossLocations,
-  getCartQuantity
 }) => {
   const [isImageOpen, setIsImageOpen] = useState(false);
   const [localQuantity, setLocalQuantity] = useState(quantity.toString());
@@ -78,22 +64,15 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
   };
 
   const handleUnitTypeChange = (newUnitType: 'pieces' | 'boxes') => {
-    // Maintain the current quantity
     const currentQuantity = parseInt(localQuantity, 10) || 0;
 
-    // Calculate the adjusted max based on the new unit
-    const availableTotal = Math.max(totalStockAcrossLocations - getCartQuantity(product._id), 0);
-    const adjustedMaxQuantity = newUnitType === 'boxes'
-      ? Math.floor(availableTotal / product.piecesPerBox)
-      : availableTotal;
-
-    // Ensure the current quantity does not exceed the adjusted max
-    const finalQuantity = Math.min(currentQuantity, adjustedMaxQuantity);
-
-    // Update the unit and quantity
+    // Update the unit type
     onUnitTypeChange(newUnitType);
-    setLocalQuantity(finalQuantity.toString());
-    onQuantityChange(finalQuantity);
+
+    // No need to recalculate max quantity since stock no longer es considerado
+    // Solo actualizar la cantidad si es necesario
+    setLocalQuantity(currentQuantity.toString());
+    onQuantityChange(currentQuantity);
   };
 
   const calculateCurrentPrice = () => {
@@ -104,21 +83,6 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
   };
 
   const currentPrice = calculateCurrentPrice();
-
-  // Calculate the total pieces based on the selected unit
-  const totalPieces = unitType === 'boxes' ? quantity * product.piecesPerBox : quantity;
-
-  // Get the quantity already in the cart for this product
-  const cartQuantity = getCartQuantity(product._id);
-
-  // Calculate the available quantities subtracting what's already in the cart
-  const availableLocation = Math.max(remainingQuantity - cartQuantity, 0);
-  const availableTotal = Math.max(totalStockAcrossLocations - cartQuantity, 0);
-
-  // Determine the maximum that can be selected without exceeding inventory
-  const adjustedMaxQuantity = unitType === 'boxes'
-    ? Math.floor(availableTotal / product.piecesPerBox)
-    : availableTotal;
 
   return (
     <div className="p-4 bg-white shadow-md rounded-lg">
@@ -132,10 +96,6 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
       </Dialog>
       <p className="text-sm mb-2">Código de producto: {product.productCode}</p>
       <p className="text-sm mb-2">Código de caja: {product.boxCode}</p>
-      
-      {/* Mostrar las cantidades disponibles estáticas */}
-      <p className="text-sm mb-2">Disponible en tu ubicación: {remainingQuantity} piezas</p>
-      <p className="text-sm mb-2">Total disponible en todas las ubicaciones: {totalStockAcrossLocations} piezas</p>
       <p className="text-sm mb-2">Piezas por caja: {product.piecesPerBox}</p>
       
       <div className="flex flex-col space-y-2 mb-4">
@@ -145,7 +105,7 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
             <Button 
               size="sm" 
               onClick={() => handleQuantityChange((quantity - 1).toString())}
-              disabled={quantity <= 0 || !product.availability || cartQuantity >= totalStockAcrossLocations}
+              disabled={quantity <= 0 || !product.availability}
             >
               <Minus size={16} />
             </Button>
@@ -156,14 +116,13 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
               onClick={handleInputSelectAll}
               onFocus={handleInputSelectAll}
               min={0}
-              max={adjustedMaxQuantity}
               className="w-16 text-center"
               disabled={!product.availability}
             />
             <Button 
               size="sm" 
               onClick={() => handleQuantityChange((quantity + 1).toString())}
-              disabled={quantity >= adjustedMaxQuantity || !product.availability}
+              disabled={!product.availability}
             >
               <Plus size={16} />
             </Button>
@@ -190,7 +149,7 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
         <span className="font-bold">${currentPrice.toFixed(2)} / pieza</span>
         <Button 
           onClick={onAddToCart}
-          disabled={!product.availability || quantity === 0 || (quantity > adjustedMaxQuantity)}
+          disabled={!product.availability || quantity === 0}
         >
           {product.availability ? (quantity === 0 ? 'Ingrese cantidad' : 'Agregar al carrito') : 'No disponible'}
         </Button>
