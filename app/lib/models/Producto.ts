@@ -10,6 +10,7 @@ export interface IProduct extends IProductBase, Document {
 export type { IStockLocation };
 
 const ProductSchema: Schema = new Schema({
+  // Remove "index: true" since unique: true already creates an index
   boxCode: { type: String, required: true, unique: true },
   productCode: { type: String, required: true, unique: true },
   name: { type: String, required: true },
