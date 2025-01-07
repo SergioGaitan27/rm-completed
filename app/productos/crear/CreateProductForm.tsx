@@ -269,11 +269,12 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                 >
                   <option value="SIN CATEGORÍA">SIN CATEGORÍA</option>
                   <option value="PAPELERÍA">PAPELERÍA</option>
+                  <option value="NAVIDAD">CERAMICA</option>
                   <option value="NAVIDAD">NAVIDAD</option>
                 </Field>
               </FormControl>
 
-              <FormControl>
+              {/* <FormControl>
                 <FormLabel>Imagen del producto</FormLabel>
                 <Flex direction="column" align="center">
                   <input
@@ -312,7 +313,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                     </Box>
                   )}
                 </Flex>
-              </FormControl>
+              </FormControl> */}
 
               <FormControl>
                 <FormLabel>Disponibilidad</FormLabel>
