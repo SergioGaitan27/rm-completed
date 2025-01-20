@@ -61,12 +61,8 @@ export async function processCorte(corteData: CorteData) {
     .filter((ticket) => ticket.paymentType === 'card')
     .reduce((sum, ticket) => sum + ticket.totalAmount, 0);
 
-  const expectedCashMovements = cashMovements
-    .reduce((sum, movement) => {
-      return movement.type === 'in' ? sum + movement.amount : sum - movement.amount;
-    }, 0);
 
-  const expectedCash = expectedCashTickets + expectedCashMobileTickets + expectedCashMovements;
+  const expectedCash = expectedCashTickets + expectedCashMobileTickets ;
   const expectedCard = expectedCardTickets + expectedCardMobileTickets;
 
   // Crear el corte

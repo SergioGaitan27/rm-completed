@@ -10,16 +10,54 @@ export interface IProduct extends IProductBase, Document {
 export type { IStockLocation };
 
 const ProductSchema: Schema = new Schema({
-  // Remove "index: true" since unique: true already creates an index
-  boxCode: { type: String, required: true, unique: true },
-  productCode: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
-  piecesPerBox: { type: Number, required: true },
-  cost: { type: Number, required: true },
-  price1: { type: Number, required: true },
-  price1MinQty: { type: Number, required: true },
-  price2: { type: Number, required: true },
-  price2MinQty: { type: Number, required: true },
+  
+  boxCode: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    trim: true // Agregar trim para limpiar espacios
+  },
+  productCode: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    trim: true
+  },
+  name: { 
+    type: String, 
+    required: true,
+    trim: true 
+  },
+  piecesPerBox: { 
+    type: Number, 
+    required: true,
+    min: 0 // Agregar validación mínima
+  },
+  cost: { 
+    type: Number, 
+    required: true,
+    min: 0
+  },
+  price1: { 
+    type: Number, 
+    required: true,
+    min: 0
+  },
+  price1MinQty: { 
+    type: Number, 
+    required: true,
+    min: 1
+  },
+  price2: { 
+    type: Number, 
+    required: true,
+    min: 0
+  },
+  price2MinQty: { 
+    type: Number, 
+    required: true,
+    min: 1
+  },
   price3: { type: Number, required: true },
   price3MinQty: { type: Number, required: true },
   price4: { type: Number },
@@ -33,15 +71,6 @@ const ProductSchema: Schema = new Schema({
   availability: { type: Boolean, default: true },
   ajustado: { type: Boolean, default: false } 
 });
-
-// Asegúrate de que los índices estén configurados correctamente
-ProductSchema.index({ boxCode: 1 }, { unique: true });
-ProductSchema.index({ productCode: 1 }, { unique: true });
-
-// Si necesitas algún método estático o de instancia, puedes agregarlo aquí
-// Por ejemplo:
-// ProductSchema.methods.someMethod = function() { ... };
-// ProductSchema.statics.someStaticMethod = function() { ... };
 
 const Product = mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema);
 

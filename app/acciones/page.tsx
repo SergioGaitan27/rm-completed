@@ -298,8 +298,7 @@ const printCorteTicket = async (
 
     // Información Básica
     conector.EstablecerTamañoFuente(1, 1);
-    conector.EscribirTexto(`Ubicación: ${corteResults.location}\n`);
-    console.log(`Escribiendo Ubicación: ${corteResults.location}`);
+    conector.EscribirTexto(`Ubicacion: ${corteResults.location}\n`);
 
     conector.EscribirTexto(`Fecha: ${new Date().toLocaleString()}\n`);
     console.log(`Escribiendo Fecha: ${new Date().toLocaleString()}`);
@@ -309,16 +308,10 @@ const printCorteTicket = async (
 
     // Montos Ingresados
     conector.EscribirTexto("Montos ingresados:\n");
+    conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
     console.log('Escribiendo "Montos ingresados:"');
-
     conector.EscribirTexto(`Efectivo: $${cashAmount.toFixed(2)}\n`);
-    console.log(`Escribiendo Efectivo ingresado: $${cashAmount.toFixed(2)}`);
-
     conector.EscribirTexto(`Tarjeta: $${cardAmount.toFixed(2)}\n`);
-    console.log(`Escribiendo Tarjeta ingresada: $${cardAmount.toFixed(2)}`);
-
-    conector.EscribirTexto(`Total ingresado: $${(cashAmount + cardAmount).toFixed(2)}\n`);
-    console.log(`Escribiendo Total ingresado: $${(cashAmount + cardAmount).toFixed(2)}`);
 
     conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
     console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
@@ -328,68 +321,52 @@ const printCorteTicket = async (
     const totalCashIn = cashInMovements.reduce((sum, mov) => sum + mov.amount, 0);
     const cashOutMovements = corteResults.cashMovements.filter(mov => mov.type === 'out');
     const totalCashOut = cashOutMovements.reduce((sum, mov) => sum + mov.amount, 0);
-    const totalSalesCash = corteResults.expectedCash - totalCashIn ;
-    const totalCash = totalSalesCash + totalCashIn;
-    
-    conector.EscribirTexto("Resultados esperados:\n");
-    console.log('Escribiendo "Resultados esperados:"');
-
-    conector.EscribirTexto(`Efectivo Total: $${totalCash.toFixed(2)}\n`);
-    console.log(`Escribiendo Efectivo Total: $${totalCash.toFixed(2)}`);
-    conector.EscribirTexto("Entradas de Efectivo:\n");
-    console.log('Escribiendo "Entradas de Efectivo:"');
-
+    const totalIncome = corteResults.expectedCash + corteResults.expectedCard + totalCashIn;
+    conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
+    conector.EscribirTexto("Entradas:\n");
+    conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
+    conector.EscribirTexto(`Efectivo: $${corteResults.expectedCash.toFixed(2)}\n`);
+    conector.EscribirTexto(`Tarjeta: $${corteResults.expectedCard.toFixed(2)}\n`);
     cashInMovements.forEach(mov => {
       conector.EscribirTexto(`${mov.concept}: $${mov.amount.toFixed(2)}\n`);
       console.log(`Escribiendo Entrada: ${mov.concept}: $${mov.amount.toFixed(2)}`);
     });
-
-    conector.EscribirTexto(`Total Entradas: $${totalCashIn.toFixed(2)}\n`);
-    console.log(`Escribiendo Total Entradas: $${totalCashIn.toFixed(2)}`);
-
-    conector.EscribirTexto("Salidas de Efectivo:\n");
-    console.log('Escribiendo "Salidas de Efectivo:"');
-
+    conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_DERECHA);
+    conector.EscribirTexto(`Subtotal: $${totalIncome.toFixed(2)}\n`);
+    conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
+    conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
+    conector.EscribirTexto("Salidas:\n");
+    conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_IZQUIERDA);
     cashOutMovements.forEach(mov => {
       conector.EscribirTexto(`${mov.concept}: $${mov.amount.toFixed(2)}\n`);
       console.log(`Escribiendo Salida: ${mov.concept}: $${mov.amount.toFixed(2)}`);
     });
+    conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_DERECHA);
+    conector.EscribirTexto(`Subtotal: $${totalCashOut.toFixed(2)}\n`);
+    conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
 
-    conector.EscribirTexto(`Total Salidas: $${totalCashOut.toFixed(2)}\n`);
-    console.log(`Escribiendo Total Salidas: $${totalCashOut.toFixed(2)}`);
-
-    conector.EscribirTexto(`Total de venta: $${totalSalesCash.toFixed(2)}\n`);
-    console.log(`Escribiendo Total de venta: $${totalSalesCash.toFixed(2)}`);
-
-    conector.EscribirTexto(`Total tarjeta: $${corteResults.expectedCard.toFixed(2)}\n`);
-    console.log(`Escribiendo Total tarjeta: $${corteResults.expectedCard.toFixed(2)}`);
-
-    conector.EscribirTexto(`Total esperado: $${(corteResults.expectedCash + corteResults.expectedCard).toFixed(2)}\n`);
-    console.log(`Escribiendo Total esperado: $${(corteResults.expectedCash + corteResults.expectedCard).toFixed(2)}`);
+    conector.EscribirTexto(`Total esperado: $${(totalIncome + totalCashOut).toFixed(2)}\n`);
+    conector.EscribirTexto(`Total ingresado: $${(cashAmount + cardAmount).toFixed(2)}\n`);
 
     conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
-    console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
 
     // Diferencias
-    const cashDifference = cashAmount - corteResults.expectedCash;
+    const cashDifference = cashAmount - (corteResults.expectedCash + totalCashIn + totalCashOut);
     const cardDifference = cardAmount - corteResults.expectedCard;
     const totalDifference = cashDifference + cardDifference;
 
+    conector.EstablecerAlineacion(ConectorPluginV3.ALINEACION_CENTRO);
     conector.EscribirTexto("Diferencias:\n");
     console.log('Escribiendo "Diferencias:"');
 
-    conector.EscribirTexto(`Efectivo: $${cashDifference.toFixed(2)} (${cashDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
+    conector.EscribirTexto(`Efectivo: $${cashDifference.toFixed(2)} (${cashDifference > 0 ? 'Sobra' : 'Falta'})\n`);
     console.log(`Escribiendo Diferencia Efectivo: $${cashDifference.toFixed(2)} (${cashDifference >= 0 ? 'Sobra' : 'Falta'})`);
 
-    conector.EscribirTexto(`Tarjeta: $${cardDifference.toFixed(2)} (${cardDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
+    conector.EscribirTexto(`Tarjeta: $${cardDifference.toFixed(2)} (${cardDifference > 0 ? 'Sobra' : 'Falta'})\n`);
     console.log(`Escribiendo Diferencia Tarjeta: $${cardDifference.toFixed(2)} (${cardDifference >= 0 ? 'Sobra' : 'Falta'})`);
 
-    conector.EscribirTexto(`Total: $${totalDifference.toFixed(2)} (${totalDifference >= 0 ? 'Sobra' : 'Falta'})\n`);
+    conector.EscribirTexto(`Total: $${totalDifference.toFixed(2)} (${totalDifference > 0 ? 'Sobra' : 'Falta'})\n`);
     console.log(`Escribiendo Diferencia Total: $${totalDifference.toFixed(2)} (${totalDifference >= 0 ? 'Sobra' : 'Falta'})`);
-
-    conector.EscribirTexto("\n");
-    console.log('Escribiendo línea en blanco');
-
 
     conector.EscribirTexto("=".repeat(anchoCaracteres) + "\n");
     console.log(`Escribiendo Separador: ${"=".repeat(anchoCaracteres)}`);
