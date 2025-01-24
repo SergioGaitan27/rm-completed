@@ -229,6 +229,7 @@ const MobileSalesPage: React.FC = () => {
       }
 
       conector.Corte(1);
+      conector.Pulso(48, 60, 120);
     
       const resultado = await conector.imprimirEn(printerConfig.printerName);
       if (typeof resultado === 'object' && resultado !== null && 'error' in resultado) {

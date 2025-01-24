@@ -269,7 +269,8 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSubmit, onBack 
                 >
                   <option value="SIN CATEGORÍA">SIN CATEGORÍA</option>
                   <option value="PAPELERÍA">PAPELERÍA</option>
-                  <option value="NAVIDAD">CERAMICA</option>
+                  <option value="BISUTERIA">BISUTERIA</option>
+                  <option value="CERAMICA">CERAMICA</option>
                   <option value="NAVIDAD">NAVIDAD</option>
                 </Field>
               </FormControl>
