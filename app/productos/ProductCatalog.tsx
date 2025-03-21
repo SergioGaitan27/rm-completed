@@ -208,10 +208,10 @@ const ProductCatalog: React.FC = () => {
       product.productCode,
       product.category,
       product.availability ? 'Disponible' : 'No disponible',
-      `$${product.cost.toFixed(2)}`,
-      `$${product.price1.toFixed(2)} (Min: ${product.price1MinQty})`,
-      `$${product.price2.toFixed(2)} (Min: ${product.price2MinQty})`,
-      `$${product.price3.toFixed(2)} (Min: ${product.price3MinQty})`,
+      `$${product.cost}`,
+      `$${product.price1} (Min: ${product.price1MinQty})`,
+      `$${product.price2} (Min: ${product.price2MinQty})`,
+      `$${product.price3} (Min: ${product.price3MinQty})`,
       product.stockLocations.map(loc => `${loc.location}: ${loc.quantity}`).join('\n')
     ]);
   

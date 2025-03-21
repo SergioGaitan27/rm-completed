@@ -136,9 +136,9 @@ const ProductListView: React.FC<ProductListViewProps> = ({ products, userLocatio
                   <Td>${product.cost.toFixed(2)}</Td>
                 </>
               )}
-            <Td>${product.price1.toFixed(2)}</Td>
-            <Td>${product.price2.toFixed(2)}</Td>
-            <Td>${product.price3.toFixed(2)}</Td>
+            <Td>${product.price1}</Td>
+            <Td>${product.price2}</Td>
+            <Td>${product.price3}</Td>
             </Tr>
           ))}
         </Tbody>

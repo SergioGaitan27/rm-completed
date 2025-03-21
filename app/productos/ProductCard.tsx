@@ -126,9 +126,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, userLocation, userRo
       <Text fontSize="sm"><strong>Piezas por caja:</strong> {product.piecesPerBox}</Text>
       <Text fontSize="sm"><strong>Categoría:</strong> {product.category}</Text>
       <Text fontSize="sm"><strong>Precios:</strong></Text>
-      <Text fontSize="xs">Menudeo: ${product.price1.toFixed(2)} | Min: {product.price1MinQty}</Text>
-      <Text fontSize="xs">Mayoreo: ${product.price2.toFixed(2)} | Min: {product.price2MinQty}</Text>
-      <Text fontSize="xs">Caja: ${product.price3.toFixed(2)} | Min: {product.price3MinQty}</Text>
+      <Text fontSize="xs">Menudeo: ${product.price1} | Min: {product.price1MinQty}</Text>
+      <Text fontSize="xs">Mayoreo: ${product.price2} | Min: {product.price2MinQty}</Text>
+      <Text fontSize="xs">Caja: ${product.price3} | Min: {product.price3MinQty}</Text>
       
       {(userRole === 'super_administrador' || userRole === 'sistemas') && (
         <>
